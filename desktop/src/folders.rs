@@ -126,6 +126,69 @@ impl App {
         }
     }
 
+    /// The note belonging to `folder`: a note inside it with the folder's own name.
+    pub fn folder_note(&self, folder: &str) -> Option<String> {
+        if folder.is_empty() {
+            return None;
+        }
+        self.files().keys().find(|p| md::is_folder_note_in(p, folder)).cloned()
+    }
+
+    /// Opens `folder`'s note, making it when the folder has none. A folder the tree has no row
+    /// for still toggles, as before.
+    pub fn open_folder(&mut self, folder: &str, tx: &mut Tx) {
+        if folder.is_empty() || !self.folder_list().iter().any(|f| f == folder) {
+            self.toggle_folder(folder);
+            return;
+        }
+        self.expanded.insert(folder.to_string());
+        let note = match self.folder_note(folder) {
+            Some(p) => Some(p),
+            None => self.create_folder_note(folder),
+        };
+        if let Some(p) = note {
+            let end = self.files().get(&p).map_or(0, String::len);
+            self.open_file(&p, Some(Sel { start: end, end, line: None, force_source: true }), tx);
+        }
+    }
+
+    /// Makes `<folder>/<folder name>.md` when it is not there, and returns its path.
+    fn create_folder_note(&mut self, folder: &str) -> Option<String> {
+        if folder.is_empty() {
+            return None;
+        }
+        if let Some(p) = self.folder_note(folder) {
+            return Some(p);
+        }
+        let name = folder.rsplit('/').next().unwrap_or(folder).to_string();
+        let path = md::folder_note_path(folder);
+        let text = format!("# {name}\n\n");
+        let v = self.vault.as_mut()?;
+        v.files.insert(path.clone(), text);
+        v.born.insert(path.clone(), crate::app::now_ns());
+        let mut d = folder.to_string();
+        while !d.is_empty() {
+            if !v.folders.contains(&d) {
+                v.folders.push(d.clone());
+            }
+            d = md::dir(&d).to_string();
+        }
+        v.folders.sort();
+        self.rebuild_names_pub();
+        self.mark_dirty_pub(&path);
+        self.persist_later();
+        Some(path)
+    }
+
+    /// Opens the note of the active note's folder, for the command palette.
+    pub fn open_active_folder_note(&mut self, tx: &mut Tx) {
+        let Some(active) = self.active.clone() else { return };
+        let folder = md::dir(&active).to_string();
+        if !folder.is_empty() {
+            self.open_folder(&folder, tx);
+        }
+    }
+
     /// Starts naming a new folder inside `parent` (`""` is the root).
     pub fn start_new_folder(&mut self, parent: &str, tx: &mut Tx) {
         let mut edit = TextEdit::new("");
@@ -363,5 +426,46 @@ mod tests {
     fn paths_split_into_folder_and_name() {
         assert_eq!(split_path("Drafts/Ideas/A: b"), ("Drafts/Ideas".into(), "A- b".into()));
         assert_eq!(split_path("../x"), (String::new(), "x".into()));
+    }
+
+    #[test]
+    fn a_folder_click_or_link_makes_its_note() {
+        use crate::app::Mode;
+        let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
+        let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
+        let dir = std::env::temp_dir().join(format!("quire-folder-note-{}", std::process::id()));
+        let vault = dir.join("vault");
+        std::fs::create_dir_all(vault.join("Projects")).unwrap();
+        std::fs::create_dir_all(vault.join("Areas")).unwrap();
+        std::fs::write(vault.join("Projects/Plan.md"), "# Plan\n").unwrap();
+        std::fs::write(vault.join("Areas/Plan.md"), "# Plan\n").unwrap();
+        // SAFETY: ENV keeps these variables to this test.
+        unsafe {
+            std::env::set_var("HOME", dir.join("home"));
+            std::env::set_var("XDG_CONFIG_HOME", dir.join("cfg"));
+            std::env::set_var("XDG_DATA_HOME", dir.join("data"));
+        }
+        let mut s = crate::app::init();
+        s.load_vault(&vault).unwrap();
+        let mut tx = Tx::default();
+        s.open_link("Projects", &mut tx);
+        assert_eq!(s.active.as_deref(), Some("Projects/Projects.md"));
+        assert_eq!(s.mode, Mode::Source);
+        assert!(s.files().contains_key("Projects/Projects.md"));
+        s.open_folder("Areas", &mut tx);
+        assert_eq!(s.active.as_deref(), Some("Areas/Areas.md"));
+        assert!(s.files().contains_key("Areas/Areas.md"));
+        assert_eq!(s.folder_note("Projects").as_deref(), Some("Projects/Projects.md"));
+        drop(s);
+        unsafe {
+            for (k, v) in old {
+                match v {
+                    Some(v) => std::env::set_var(k, v),
+                    None => std::env::remove_var(k),
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

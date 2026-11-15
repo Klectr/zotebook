@@ -22,6 +22,44 @@ pub fn strip_md(p: &str) -> &str {
     if p.len() >= 3 && p[p.len() - 3..].eq_ignore_ascii_case(".md") { &p[..p.len() - 3] } else { p }
 }
 
+/// The note that belongs to `folder`: a note inside it with the folder's own name.
+pub fn folder_note_path(folder: &str) -> String {
+    let name = folder.rsplit('/').next().unwrap_or(folder);
+    join(folder, &format!("{name}.md"))
+}
+
+/// Whether `path` is the note of the folder it lives in, such as `Projects/Projects.md`.
+pub fn is_folder_note(path: &str) -> bool {
+    let folder = dir(path);
+    !folder.is_empty() && same_name(base(path), folder.rsplit('/').next().unwrap_or(folder))
+}
+
+/// Whether `path` is the note of `folder`, such as `Projects/Projects.md`.
+pub fn is_folder_note_in(path: &str, folder: &str) -> bool {
+    let name = folder.rsplit('/').next().unwrap_or(folder);
+    !folder.is_empty() && dir(path) == folder && same_name(base(path), name)
+}
+
+/// Two names equal, ignoring case. ASCII, the common case, compares without allocating.
+fn same_name(a: &str, b: &str) -> bool {
+    if a.is_ascii() && b.is_ascii() { a.eq_ignore_ascii_case(b) } else { a.to_lowercase() == b.to_lowercase() }
+}
+
+/// The folder a link such as `[[Projects]]` means: an exact folder path, or a folder whose
+/// last part matches the name. A root folder wins over one deeper in the tree.
+pub fn folder_for_link(folders: &[String], target: &str) -> Option<String> {
+    let t = target.trim().trim_end_matches('/');
+    if t.is_empty() {
+        return None;
+    }
+    if t.contains('/') {
+        return folders.iter().find(|f| f.as_str() == t).cloned();
+    }
+    let mut hits: Vec<&String> = folders.iter().filter(|f| f.rsplit('/').next().is_some_and(|n| same_name(n, t))).collect();
+    hits.sort_by_key(|f| (f.matches('/').count(), f.len(), (*f).clone()));
+    hits.first().map(|f| (*f).clone())
+}
+
 /// Makes a name safe as a file name: path separators and colons become dashes.
 pub fn clean_name(s: &str) -> String {
     s.chars().map(|c| if matches!(c, '\\' | '/' | ':') { '-' } else { c }).collect::<String>().trim().to_string()
@@ -41,6 +79,16 @@ impl Names {
         for p in files.keys() {
             m.entry(base(p).to_lowercase()).or_insert_with(|| p.clone());
             m.insert(strip_md(p).to_lowercase(), p.clone());
+        }
+        // A folder's note owns its name, so [[Projects]] opens Projects/Projects.md even
+        // when another note is also called Projects. The shallowest folder note keeps it.
+        let mut folder_notes: Vec<&String> = files.keys().filter(|p| is_folder_note(p)).collect();
+        folder_notes.sort_by_key(|p| (p.matches('/').count(), (*p).clone()));
+        for p in folder_notes {
+            let key = base(p).to_lowercase();
+            if !m.get(&key).is_some_and(|found| is_folder_note(found)) {
+                m.insert(key, p.clone());
+            }
         }
         Names(m)
     }
@@ -967,6 +1015,38 @@ mod tests {
     #[test]
     fn links_rewrite_with_alias() {
         assert_eq!(rewrite_links("x [[Old|o]] [[old]] [[Other]]", "Old", "New"), "x [[New|o]] [[New]] [[Other]]");
+    }
+
+    #[test]
+    fn folder_notes_take_their_folder_name() {
+        assert!(is_folder_note("Projects/Projects.md"));
+        assert!(is_folder_note("A/Projects/projects.MD"));
+        assert!(is_folder_note_in("Projects/Projects.md", "Projects"));
+        assert!(!is_folder_note_in("Projects/Projects.md", "A/Projects"));
+        assert!(!is_folder_note("Projects/Overview.md"));
+        assert!(!is_folder_note("Projects.md"));
+        assert_eq!(folder_note_path("A/Projects"), "A/Projects/Projects.md");
+    }
+
+    #[test]
+    fn a_folder_note_wins_its_bare_name() {
+        let files = BTreeMap::from([
+            ("Archive/Projects.md".to_string(), String::new()),
+            ("Projects.md".to_string(), String::new()),
+            ("Projects/Projects.md".to_string(), String::new()),
+        ]);
+        let names = Names::build(&files);
+        assert_eq!(names.resolve("Projects"), Some("Projects/Projects.md"));
+        assert_eq!(names.resolve("Projects/Projects"), Some("Projects/Projects.md"));
+    }
+
+    #[test]
+    fn a_bare_link_finds_the_nearest_folder() {
+        let folders = vec!["Projects".to_string(), "Archive/Projects".to_string(), "Drafts".to_string()];
+        assert_eq!(folder_for_link(&folders, "Projects"), Some("Projects".to_string()));
+        assert_eq!(folder_for_link(&folders, "Archive/Projects"), Some("Archive/Projects".to_string()));
+        assert_eq!(folder_for_link(&folders, "projects/"), Some("Projects".to_string()));
+        assert_eq!(folder_for_link(&folders, "Nope"), None);
     }
 
     #[test]

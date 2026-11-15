@@ -970,9 +970,12 @@ impl App {
         if t.is_empty() {
             return;
         }
-        match self.names.resolve(&t).map(str::to_string) {
-            Some(p) => self.open_file(&p, None, tx),
-            None => self.new_note(Some(&t), tx),
+        if let Some(p) = self.names.resolve(&t).map(str::to_string) {
+            self.open_file(&p, None, tx);
+        } else if let Some(folder) = md::folder_for_link(&self.folder_list(), &t) {
+            self.open_folder(&folder, tx);
+        } else {
+            self.new_note(Some(&t), tx);
         }
     }
 

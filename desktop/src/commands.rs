@@ -26,6 +26,13 @@ pub fn commands(s: &App, dark: bool) -> Vec<Cmd> {
         cmd("Open today's journal entry", &[], |s, tx| s.open_today(tx)),
         cmd("Open quick switcher", &["Mod", "O"], |s, tx| s.open_palette(PalMode::Files, tx)),
     ];
+    if let Some(active) = s.active.as_deref() {
+        let folder = md::dir(active);
+        if !folder.is_empty() {
+            let label = if s.folder_note(folder).is_some() { "Open folder note" } else { "Create folder note" };
+            v.push(cmd(label, &[], |s, tx| s.open_active_folder_note(tx)));
+        }
+    }
     if has {
         let label = if s.mode == Mode::Source { "Show preview" } else { "Show source" };
         v.push(cmd(label, &["Mod", "E"], |s, tx| s.toggle_mode(tx)));

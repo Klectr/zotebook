@@ -1,6 +1,6 @@
 //! The left sidebar: the folder menu, files, search and tags.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rune::{Color, El, ScrollSpec, Span, col, el, icon, rich, row, text, text_input};
 
@@ -173,20 +173,25 @@ fn files_panel(v: V) -> El {
     let s = v.s;
     let Some(vault) = &s.vault else { return col() };
     let mut root = Node::new(String::new());
-    for f in &vault.folders {
+    for f in &s.folder_list() {
         root.add(f);
     }
     let pinned = s.pinned_notes();
-    for f in vault.files.keys().filter(|f| !pinned.contains(f)) {
-        let d = md::dir(f);
-        let n = if d.is_empty() { &mut root } else { root.add(d) };
-        n.files.push(f.clone());
+    let mut folder_notes = BTreeSet::new();
+    for f in vault.files.keys() {
+        if md::is_folder_note(f) {
+            folder_notes.insert(md::dir(f).to_string());
+        } else if !pinned.contains(f) {
+            let d = md::dir(f);
+            let n = if d.is_empty() { &mut root } else { root.add(d) };
+            n.files.push(f.clone());
+        }
     }
     let mut rows = Vec::new();
     if !pinned.is_empty() {
         rows.push(pins_group(v, &pinned));
     }
-    walk(v, &root, 0, &mut rows);
+    walk(v, &root, 0, &mut rows, &folder_notes);
     let root_target = s.dragging.as_ref().is_some_and(|d| d.active && d.target.as_deref() == Some(""));
     let mut c = col()
         .key("tree")
@@ -202,7 +207,7 @@ fn files_panel(v: V) -> El {
     c.children(rows)
 }
 
-fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>) {
+fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>, folder_notes: &BTreeSet<String>) {
     let s = v.s;
     if let Some(nf) = &s.new_folder {
         if nf.parent == n.path {
@@ -217,6 +222,7 @@ fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>) {
         let path = f.path.clone();
         let menu_path = f.path.clone();
         let add_path = f.path.clone();
+        let help = if folder_notes.contains(&f.path) { format!("{} · folder note", f.path) } else { f.path.clone() };
         let add = row()
             .key("add")
             .size(20.0, 20.0)
@@ -229,14 +235,14 @@ fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>) {
             .on_press_tx(move |s: &mut App, tx| s.new_note_in(Some(&add_path), None, tx))
             .child(icon(&PLUS, 10.0).color(v.p.mute));
         rows.push(
-            tree_row(v, &row_key("dir", &f.path), name, depth, true, open, false, None)
-                .help(f.path.clone())
-                .on_press(move |s: &mut App| s.toggle_folder(&path))
+            tree_row(v, &row_key("dir", &f.path), name, depth, true, open, false, None, Some(path.clone()))
+                .help(help)
+                .on_press_tx(move |s: &mut App, tx| s.open_folder(&path, tx))
                 .on_secondary_press(move |s: &mut App, at, _| s.open_tree_menu(MenuOn::Folder(menu_path.clone()), at.x, at.y))
                 .child(add),
         );
         if open {
-            walk(v, f, depth + 1, rows);
+            walk(v, f, depth + 1, rows, folder_notes);
         }
     }
     let mut files: Vec<&String> = n.files.iter().collect();
@@ -250,7 +256,7 @@ fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>) {
 fn note_row(v: V, f: &str, depth: usize) -> El {
     let on = v.s.active.as_deref() == Some(f);
     let (path, drag_path, menu_path) = (f.to_string(), f.to_string(), f.to_string());
-    tree_row(v, &row_key("file", f), md::base(f), depth, false, false, on, None)
+    tree_row(v, &row_key("file", f), md::base(f), depth, false, false, on, None, None)
         .help(f.to_string())
         .on_press_tx(move |s: &mut App, tx| s.open_file(&path, None, tx))
         .on_drag(move |s: &mut App, d: &mut rune::Drag, tx| s.drag_note(&drag_path, d, tx))
@@ -265,7 +271,7 @@ fn pins_group(v: V, pinned: &[String]) -> El {
     let s = v.s;
     let open = s.pins_open;
     let target = s.dragging.as_ref().is_some_and(|d| d.active && d.pin);
-    let mut head = tree_row(v, "pins-head", "Pinned", 0, true, open, false, Some(&PIN))
+    let mut head = tree_row(v, "pins-head", "Pinned", 0, true, open, false, Some(&PIN), None)
         .help(format!("{} pinned {}", pinned.len(), if pinned.len() == 1 { "note" } else { "notes" }))
         .on_press(|s: &mut App| s.toggle_pins_open());
     if target {
@@ -288,17 +294,20 @@ fn pins_group(v: V, pinned: &[String]) -> El {
 
 /// A row of the tree. `glyph` takes the place of the folder icon, as the Pinned group's pin does.
 #[allow(clippy::too_many_arguments)]
-fn tree_row(v: V, key: &str, name: &str, depth: usize, folder: bool, open: bool, on: bool, glyph: Option<&'static rune::Icon>) -> El {
+fn tree_row(v: V, key: &str, name: &str, depth: usize, folder: bool, open: bool, on: bool, glyph: Option<&'static rune::Icon>, toggle: Option<String>) -> El {
     let p = v.p;
     let color = if folder || !on { p.ink2 } else { p.ink };
     let weight = if folder || on { 500.0 } else { 400.0 };
-    let chev = el()
+    let mut chev = el()
         .key("chev")
         .w(12.0)
         .h(12.0)
         .center()
         .opacity(if folder { 1.0 } else { 0.0 })
         .child(icon(&CHEVRON_RIGHT, 8.0).color(p.mute).rotate(if open { std::f32::consts::FRAC_PI_2 } else { 0.0 }).rotate_motion(rune::Spring::new(0.12, 0.0)));
+    if let Some(path) = toggle {
+        chev = chev.on_press(move |s: &mut App| s.toggle_folder(&path));
+    }
     let dragged = v.s.dragging.as_ref().is_some_and(|d| d.active && key == row_key("file", &d.path));
     let target = folder && v.s.dragging.as_ref().is_some_and(|d| d.active && d.target.as_ref().is_some_and(|t| key == row_key("dir", t)));
     let mut r = row()
@@ -380,11 +389,16 @@ pub fn tree_menu(v: V) -> El {
     let mut items: Vec<(&str, Run)> = Vec::new();
     match m.on.clone() {
         MenuOn::Folder(f) => {
-            let (f2, f3) = (f.clone(), f.clone());
+            let (f1, f2, f3, f4) = (f.clone(), f.clone(), f.clone(), f.clone());
             let (mx, my) = (m.x, m.y);
-            items.push(("New note here", Box::new(move |s, tx| s.new_note_in(Some(&f), None, tx))));
-            items.push(("New folder here", Box::new(move |s, tx| s.start_new_folder(&f2, tx))));
-            items.push(("Delete folder", Box::new(move |s, _| s.ask_delete_folder(&f3, mx, my))));
+            let has_note = v.s.folder_note(&f).is_some();
+            items.push((
+                if has_note { "Open folder note" } else { "Create folder note" },
+                Box::new(move |s, tx| s.open_folder(&f1, tx)),
+            ));
+            items.push(("New note here", Box::new(move |s, tx| s.new_note_in(Some(&f2), None, tx))));
+            items.push(("New folder here", Box::new(move |s, tx| s.start_new_folder(&f3, tx))));
+            items.push(("Delete folder", Box::new(move |s, _| s.ask_delete_folder(&f4, mx, my))));
         }
         MenuOn::Note(n) => {
             let (n1, n2, n3, n4) = (n.clone(), n.clone(), n.clone(), n.clone());

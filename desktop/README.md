@@ -53,6 +53,7 @@ The script puts the binary in `~/.local/bin/quire`, the icon in `~/.local/share/
 - Moves a note into a folder when you drag it onto the folder. Drop it on the folder name or on empty space to move it to the root. Links that spell out the old folder follow the note.
 - Moves deleted notes to `.trash` inside the folder.
 - Pins a note to the Pinned group at the top of the tree. Right-click the note and select **Pin**, drag it onto the group, select the pin button in the toolbar, or use "Pin note" in the command palette. The file stays in its folder. The tree shows the folder name next to the pinned note. Pins sync with the notes folder when sync is on. Without sync, they are saved in `state.json`.
+- Gives a folder its own note: a note inside a folder with the folder's name, such as `Projects/Projects.md`, is hidden from the tree. Clicking the folder opens it, or makes it first, and a `[[Projects]]` link opens it. The chevron still expands and collapses the folder. The folder's right-click menu and the command palette open or make the note too.
 - Deletes a folder from its right-click menu. A folder with notes asks first. The folder moves to `.trash` with every file in it, so you can get it back.
 - Picks up changes that other apps make to the folder while Quire is open.
 
