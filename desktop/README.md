@@ -59,6 +59,7 @@ The script puts the binary in `~/.local/bin/quire`, the icon in `~/.local/share/
 
 ### Look
 
+- Offers four monospaced editor fonts in Settings, Editor: IBM Plex Mono, Courier Prime, Spline Sans Mono and Maple Mono. Maple Mono keeps its ligatures; the other three draw them off.
 - Has 14 themes in Settings, Appearance: 6 for light mode and 8 for dark mode. You pick one for each mode, and "Match system" switches between them.
 - Lets you pick the accent colour from 9 swatches, or type a `#rrggbb` value. An accent that is too dark to read on a dark theme gets lighter for text.
 - On Omarchy, offers the current Omarchy theme in both lists and follows theme switches while Quire runs. Without a pick, "Match system" uses the Omarchy theme.

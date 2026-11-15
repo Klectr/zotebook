@@ -179,7 +179,7 @@ The `.lockup` rule in `styles.css` sets the proportions. The mark box is `0.923e
 
 ## Fonts
 
-The page uses Newsreader, Instrument Sans and IBM Plex Mono. The font specimens use Courier Prime and Spline Sans Mono. The WOFF2 files come from the TTF files in `assets/fonts/`, converted with `woff2_compress` and not subset. Each font has its licence file in `fonts/`.
+The page uses Newsreader, Instrument Sans and IBM Plex Mono. The font specimens use Courier Prime, Spline Sans Mono and Maple Mono. The WOFF2 files come from the TTF files in `assets/fonts/`, converted with `woff2_compress` and not subset. Each font has its licence file in `fonts/`.
 
 ## Text style
 

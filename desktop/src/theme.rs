@@ -27,6 +27,8 @@ pub const FONTS: &[&[u8]] = &[
     include_bytes!("../../assets/fonts/CourierPrime-BoldItalic.ttf"),
     include_bytes!("../../assets/fonts/SplineSansMono-VF.ttf"),
     include_bytes!("../../assets/fonts/SplineSansMono-Italic-VF.ttf"),
+    include_bytes!("../../assets/fonts/MapleMono-VF.ttf"),
+    include_bytes!("../../assets/fonts/MapleMono-Italic-VF.ttf"),
 ];
 
 /// An editor font choice: its id in settings, its label and its family.
@@ -35,12 +37,15 @@ pub struct EditorFont {
     pub label: &'static str,
     pub family: Family,
     pub name: &'static str,
+    /// Keep the font's contextual alternates, which Maple Mono uses for its ligatures.
+    pub ligatures: bool,
 }
 
-pub const EDITOR_FONTS: [EditorFont; 3] = [
-    EditorFont { id: "plex", label: "IBM Plex Mono", family: Family::Named("IBM Plex Mono"), name: "IBM Plex Mono" },
-    EditorFont { id: "courier", label: "Courier Prime", family: Family::Named("Courier Prime"), name: "Courier Prime" },
-    EditorFont { id: "spline", label: "Spline Sans Mono", family: Family::Named("Spline Sans Mono"), name: "Spline Sans Mono" },
+pub const EDITOR_FONTS: [EditorFont; 4] = [
+    EditorFont { id: "plex", label: "IBM Plex Mono", family: Family::Named("IBM Plex Mono"), name: "IBM Plex Mono", ligatures: false },
+    EditorFont { id: "courier", label: "Courier Prime", family: Family::Named("Courier Prime"), name: "Courier Prime", ligatures: false },
+    EditorFont { id: "spline", label: "Spline Sans Mono", family: Family::Named("Spline Sans Mono"), name: "Spline Sans Mono", ligatures: false },
+    EditorFont { id: "maple", label: "Maple Mono", family: Family::Named("Maple Mono"), name: "Maple Mono", ligatures: true },
 ];
 
 pub fn editor_font(id: &str) -> &'static EditorFont {

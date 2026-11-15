@@ -68,7 +68,9 @@ pub fn body(v: V) -> El {
 pub fn ed_style(v: V) -> TextStyle {
     let set = v.s.settings();
     let size = set.size as f32;
-    TextStyle::new(size, 400.0).family(theme::editor_font(&set.font).family).lh(size * 1.75).features("'liga' 0, 'clig' 0, 'calt' 0")
+    let font = theme::editor_font(&set.font);
+    let features = if font.ligatures { "'liga' 1, 'clig' 1, 'calt' 1" } else { "'liga' 0, 'clig' 0, 'calt' 0" };
+    TextStyle::new(size, 400.0).family(font.family).lh(size * 1.75).features(features)
 }
 
 fn clamp(lo: f32, x: f32, hi: f32) -> f32 {

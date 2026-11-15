@@ -43,6 +43,13 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: "Maple Mono";
+  src: url("fonts/maple-mono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Tokens. Light is the default. Dark applies from the system setting or from the switch. */
 :root {
@@ -972,6 +979,9 @@ h3 {
 }
 .specimen--spline {
   font-family: "Spline Sans Mono", ui-monospace, monospace;
+}
+.specimen--maple {
+  font-family: "Maple Mono", ui-monospace, monospace;
 }
 
 /* Bands */

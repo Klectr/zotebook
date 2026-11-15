@@ -303,8 +303,14 @@ fn accent_block(v: V) -> El {
 fn editor(v: V) -> El {
     let p = v.p;
     let set = v.s.settings();
-    let mut cards = row().key("font-cards").w_full().gap(10.0).mt(14.0);
-    for f in &EDITOR_FONTS {
+    let mut cards = col().key("font-cards").w_full().gap(10.0).mt(14.0);
+    let mut line = row().key("font-row-0").w_full().gap(10.0);
+    for (i, f) in EDITOR_FONTS.iter().enumerate() {
+        // Two cards per row, so each keeps enough width for its samples.
+        if i > 0 && i % 2 == 0 {
+            cards = cards.child(line);
+            line = row().key(format!("font-row-{}", i / 2)).w_full().gap(10.0);
+        }
         let on = set.font == f.id;
         let id = f.id;
         let mut b = col()
@@ -332,8 +338,9 @@ fn editor(v: V) -> El {
         if on {
             b = b.box_shadow(rune::Shadow { x: 0.0, y: 0.0, blur: 0.0, spread: 1.0, color: p.acc, inset: false });
         }
-        cards = cards.child(b);
+        line = line.child(b);
     }
+    cards = cards.child(line);
     let size = set.size;
     let step = |key: &str, t: &str, d: i32| {
         row()
