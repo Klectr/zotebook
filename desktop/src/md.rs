@@ -37,6 +37,21 @@ pub fn name_without_icon(name: &str) -> &str {
     crate::emoji::leading(name).map_or(name, |(_, rest)| rest.trim_start())
 }
 
+/// The top-level folder that holds the journal: `Journal`, or `Journal` behind an icon such as
+/// `📓 Journal`. A plain `Journal` wins over one with an icon. The name matches in any case.
+pub fn journal_folder<'a>(folders: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+    let mut found = None;
+    for f in folders.into_iter().filter(|f| !f.contains('/')) {
+        if f == "Journal" {
+            return Some(f);
+        }
+        if found.is_none() && name_without_icon(f).trim().eq_ignore_ascii_case("journal") {
+            found = Some(f);
+        }
+    }
+    found
+}
+
 /// The icon of a folder path, from the last part of the path.
 pub fn folder_icon(folder: &str) -> Option<&str> {
     name_icon(folder_segment(folder))
@@ -1145,6 +1160,16 @@ mod tests {
         assert!(is_folder_note_in("🎉 Party/Party.md", "🎉 Party"));
         assert!(is_folder_note_in("🎉 Party/🎉 Party.md", "🎉 Party"));
         assert_eq!(folder_for_link(&["Archive".into(), "🎉 Party".into()], "Party"), Some("🎉 Party".into()));
+    }
+
+    #[test]
+    fn the_journal_folder_may_have_an_icon() {
+        assert_eq!(journal_folder(["Docs", "📓 Journal"]), Some("📓 Journal"));
+        assert_eq!(journal_folder(["📓Journal"]), Some("📓Journal"));
+        assert_eq!(journal_folder(["📓 Journal", "Journal"]), Some("Journal"));
+        assert_eq!(journal_folder(["journal"]), Some("journal"));
+        assert_eq!(journal_folder(["Docs/📓 Journal", "Journals", "My Journal"]), None);
+        assert_eq!(journal_folder(["Docs"]), None);
     }
 
     #[test]

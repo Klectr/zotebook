@@ -949,7 +949,9 @@ impl App {
     pub fn open_today(&mut self, tx: &mut Tx) {
         let ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64);
         let now = rune::LocalTime::at(ms);
-        let p = format!("Journal/{:04}-{:02}-{:02}.md", now.year, now.month, now.day);
+        let folders = self.folder_list();
+        let folder = md::journal_folder(folders.iter().map(String::as_str)).unwrap_or("Journal").to_string();
+        let p = format!("{folder}/{:04}-{:02}-{:02}.md", now.year, now.month, now.day);
         let existing = self.files().get(&p).cloned();
         let text = match existing {
             Some(t) => t,
@@ -958,8 +960,8 @@ impl App {
                 if let Some(v) = &mut self.vault {
                     v.files.insert(p.clone(), c.clone());
                     v.born.insert(p.clone(), now_ns());
-                    if !v.folders.iter().any(|f| f == "Journal") {
-                        v.folders.push("Journal".into());
+                    if !v.folders.contains(&folder) {
+                        v.folders.push(folder.clone());
                         v.folders.sort();
                     }
                 }
