@@ -99,9 +99,6 @@ Keep the desktop screenshots at 1280 x 800. If you use another size, keep the 16
 | `assets/quire.mp4` | The promo video, 38 seconds at 2560x1600 and 60 fps, with burnt-in captions. The "See it work" section and the root README use it. | Recorded with `quire --script promo.json --video raw.mp4 --fps 60 --pointer --size 1280x800 --scale 2`, then captioned with `ffmpeg drawtext`. |
 | `assets/quire.gif` | The same video at 960x600 and 12 fps, for the root README. | Made from `quire.mp4` with `palettegen` and `paletteuse`. |
 | `assets/quire-poster.png` | The poster frame of the video: the new note in preview, with its image. | A frame of the raw recording at 15.8 seconds, resized to 1280x800. |
-| `assets/phone-editor.png` | Android: a note in source mode. | Missing. See "Phone screenshots". |
-| `assets/phone-preview.png` | Android: a note in preview. | Missing. |
-| `assets/phone-switcher.png` | Android: the quick switcher. | Missing. |
 
 Some figures zoom into one part of their screenshot, so the text stays readable. Each zoom is set in the `style` attribute of the image in `index.html`:
 
@@ -116,7 +113,7 @@ The screenshots come from the desktop app, rendered headless at 2x and scaled to
 magick settings-sync@2x.png -filter Lanczos -resize 1280x800 -strip site/assets/settings-sync.png
 ```
 
-The sync section describes object-storage sync in the desktop app and the Android app, which use the format in `SYNC.md`, and the desktop-only GitHub option, which uses Git.
+The sync section describes object-storage sync, which uses the format in `SYNC.md`, and the GitHub option, which uses Git.
 
 ### Make the social image again
 
@@ -160,16 +157,6 @@ If the brand files in `assets/brand/` change, run these commands from the reposi
 magick -background none -density 960 assets/brand/icon-paper.svg -resize 32x32 -strip site/favicon-32.png
 magick -background white -density 1728 assets/brand/icon-paper.svg -resize 180x180 -flatten -strip site/apple-touch-icon.png
 ```
-
-### Phone screenshots
-
-The page has a hidden section for 3 Android screenshots. It stays hidden, so the page never shows a broken image. To show it:
-
-1. Add `assets/phone-editor.png`, `assets/phone-preview.png` and `assets/phone-switcher.png`. Use portrait images at 1080 x 2400.
-2. In `index.html`, find `data-phone-shots="off"` and change it to `data-phone-shots="on"`.
-3. If your images have another size, change the `width` and `height` attributes of the 3 `<img>` elements in that section.
-
-To show 2 screenshots, delete the third `<figure class="phone">` element. On screens narrower than 520 px, the page shows only the first 2 screenshots.
 
 ## Brand
 

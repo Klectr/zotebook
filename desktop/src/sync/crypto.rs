@@ -1,5 +1,4 @@
 //! Encryption before upload: AES-256-GCM, with keys from the passphrase by PBKDF2-HMAC-SHA256.
-//! Both are in the Android platform too, so the phone app reads the same files.
 
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce};

@@ -1,7 +1,7 @@
 # Quire sync format
 
 Quire keeps a notes folder the same on every device through an object store that you own. The
-desktop app and the Android app use the format in this file. A third app that follows it can
+desktop app uses the format in this file. Another app that follows it can
 read and write the same notes.
 
 The reference code is in `desktop/src/sync/`. The tests in `desktop/src/sync/tests.rs` run two
@@ -92,8 +92,7 @@ writes this file. Every later device reads it first and stops with an error in t
 `folders` has no folders. `pins` lists the pinned notes. A manifest without `pins` comes from a
 version without pins. Such a manifest says nothing about pins, so a device keeps its own pins
 and writes them. `time` is the upload time in milliseconds since 1970. `device` is the
-name of the device that uploaded the file. The desktop app uses the host name. The Android app
-uses the device model.
+name of the device that uploaded the file. The desktop app uses the host name.
 
 ## Encryption
 
@@ -250,8 +249,7 @@ or a URL that is not valid. Each try signs the request again. Downloads, uploads
 
 ## When a device syncs
 
-- When a notes folder opens. On Android, also when the app comes to the front and when it goes
-  to the background.
+- When a notes folder opens.
 - After a save, a delete, a rename, a move or a new folder, when **When to sync** is **On save**.
   The sync starts 1.5 seconds after the change.
 - Every 5 minutes, when **When to sync** is **Every 5 min**.

@@ -1175,36 +1175,6 @@ h3 {
   padding: 1px 7px;
 }
 
-/* Phone screenshots. Hidden until the images exist. */
-[data-phone-shots="off"] {
-  display: none;
-}
-.phones {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(12px, 3vw, 40px);
-  max-width: 960px;
-  margin-inline: auto;
-}
-.phone {
-  margin: 0;
-  text-align: center;
-}
-.phone img {
-  width: 100%;
-  border-radius: clamp(12px, 2.4vw, 28px);
-  box-shadow: var(--win-shadow);
-  background: var(--side);
-}
-@media (max-width: 520px) {
-  .phones {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .phone:last-child {
-    display: none;
-  }
-}
-
 /* Download */
 #download h2 {
   margin-bottom: clamp(32px, 5vw, 56px);
@@ -1223,14 +1193,6 @@ h3 {
 .platforms {
   display: grid;
   gap: 32px;
-}
-@media (min-width: 640px) and (max-width: 1023px) {
-  .platforms {
-    grid-template-columns: 1fr 1fr;
-  }
-  .platforms .aside {
-    grid-column: 1 / -1;
-  }
 }
 .platform {
   display: flex;

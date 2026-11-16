@@ -1,6 +1,5 @@
 //! The Markdown toolbar's actions, as plain text edits. Each action looks at the text and the
-//! selection, and gives back one replacement and the selection after it. The Android app has
-//! the same rules.
+//! selection, and gives back one replacement and the selection after it.
 
 /// A toolbar action.
 #[derive(Clone, Copy, Debug, PartialEq)]

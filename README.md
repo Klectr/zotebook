@@ -33,11 +33,11 @@ Quire opens a folder and edits the Markdown files in it. There is no database, n
 - **Add images.** Drag an image onto a note, paste one, or use the image button in the toolbar. Quire copies it into `attachments/` and links it. The preview shows `![alt](path)` and `![[name.png]]` images, and web images too.
 - **Link notes.** Write `[[Note name]]` and `Ctrl`-click to follow it. A link to a missing note creates the note. Renaming a note rewrites the links to it.
 - **Find anything.** `Ctrl+O` opens any note by a fuzzy name. `Ctrl+P` runs any command. `Ctrl+Shift+F` searches every note. Tags (`#idea`) get their own list.
-- **Keep folders tidy.** Make folders in the file tree, drag notes into them, and use the `+` on a folder to make a note there. On the desktop, click a folder's icon to give it any emoji as its icon: the emoji is the first character of the folder name on disk, so it stays with the folder, and the tree shows the rest of the name beside it. To delete a folder, right-click it. The folder moves to `.trash` with its files. To keep a note at the top of the tree, right-click it and select **Pin**. Pins sync with the notes. In the quick switcher, `Drafts/Idea` makes the note in `Drafts`. On the desktop, a note inside a folder with the folder's own name, such as `Projects/Projects.md`, is the folder's note: it stays out of the tree, and clicking the folder or following `[[Projects]]` opens it, making it if it is missing.
-- **Sync your devices.** Keep a notes folder the same on your computers and your phone, through object storage that you control, with optional encryption.
+- **Keep folders tidy.** Make folders in the file tree, drag notes into them, and use the `+` on a folder to make a note there. Click a folder's icon to give it any emoji as its icon: the emoji is the first character of the folder name on disk, so it stays with the folder, and the tree shows the rest of the name beside it. To delete a folder, right-click it. The folder moves to `.trash` with its files. To keep a note at the top of the tree, right-click it and select **Pin**. Pins sync with the notes. In the quick switcher, `Drafts/Idea` makes the note in `Drafts`. A note inside a folder with the folder's own name, such as `Projects/Projects.md`, is the folder's note: it stays out of the tree, and clicking the folder or following `[[Projects]]` opens it, making it if it is missing.
+- **Sync your devices.** Keep a notes folder the same on all your computers, through object storage that you control, with optional encryption.
 - **Focus.** `Ctrl+.` or the focus button hides everything but the text, dims the other paragraphs and keeps the line you type near the middle.
-- **Look at home.** Pick a theme for light mode and one for dark mode from 14 themes, such as White, Black, Nord, Gruvbox, Catppuccin, Tokyo Night, Rosé Pine and Solarized. Pick an accent colour, or type any hex value. "Match system" switches between your two themes. On Omarchy, your Omarchy theme is one of the choices. On the desktop, choose one of four monospaced editor fonts, including Maple Mono.
-- **Stay up to date.** When a new release is out, an **Update** button shows at the top right. Select it, and Quire installs the new version and restarts. This works on Linux, macOS, Windows and Android.
+- **Look at home.** Pick a theme for light mode and one for dark mode from 14 themes, such as White, Black, Nord, Gruvbox, Catppuccin, Tokyo Night, Rosé Pine and Solarized. Pick an accent colour, or type any hex value. "Match system" switches between your two themes. On Omarchy, your Omarchy theme is one of the choices. Choose one of four monospaced editor fonts, including Maple Mono.
+- **Stay up to date.** When a new release is out, an **Update** button shows at the top right. Select it, and Quire installs the new version and restarts. This works on Linux, macOS and Windows.
 - **Work with AI tools.** A built-in MCP server lets Claude Desktop, Cursor and other MCP clients read and search your notes.
 
 <table>
@@ -59,16 +59,6 @@ Quire opens a folder and edits the Markdown files in it. There is no database, n
   </tr>
 </table>
 
-### On your phone
-
-The Android app is the same editor for a phone: one pane, a drawer for the files, and tabs for open notes.
-
-<p align="center">
-  <img src="site/assets/phone-editor.png" width="250" alt="Quire on Android with a note in source mode and the Markdown toolbar above the keyboard.">
-  <img src="site/assets/phone-preview.png" width="250" alt="Quire on Android with a note in preview that shows an image.">
-  <img src="site/assets/phone-switcher.png" width="250" alt="The quick switcher on Android, with the notes that match a search.">
-</p>
-
 ## Install
 
 Download the build for your system from the [latest release](https://github.com/bjarneo/quire/releases/latest):
@@ -78,7 +68,6 @@ Download the build for your system from the [latest release](https://github.com/
 | Linux, x86-64 | `quire-<version>-linux-x86_64.tar.gz`. Unpack it and run `./install.sh`. |
 | macOS, Apple silicon | `quire-<version>-macos-arm64.zip`. The app is not notarized, so right-click it and choose **Open** the first time. |
 | Windows, x86-64 | `quire-<version>-windows-x86_64.zip`. The app is not signed, so SmartScreen can warn you. |
-| Android 8.0 and later | `quire-<version>-android.apk` |
 
 Quire is pre-release. To build it yourself, follow the steps below.
 
@@ -94,18 +83,6 @@ quire ~/notes       # or open Quire from the app launcher
 ```
 
 The desktop app is built with [Rune](https://github.com/anomalyco/rune), a GPU-rendered Rust UI framework. Rune also targets macOS and Windows, but Quire is tested on Linux only. See [`desktop/README.md`](desktop/README.md).
-
-### Android
-
-You need JDK 21 and the Android SDK.
-
-```sh
-cd quire/android
-./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-See [`android/README.md`](android/README.md).
 
 ## Use it with your AI tools
 
@@ -123,7 +100,7 @@ Access is read-only by default. Each tool has its own switch, and hidden folders
 
 ## Sync your devices
 
-Quire keeps a copy of your notes in object storage that you control. The desktop and Android apps use the same format, so a note you write on one device opens on the other.
+Quire keeps a copy of your notes in object storage that you control. Every computer uses the same format, so a note you write on one opens on the others.
 
 1. Make a bucket at your provider and an access key for it.
 2. Open Settings, Sync & backup, and select the provider.
@@ -132,7 +109,7 @@ Quire keeps a copy of your notes in object storage that you control. The desktop
 
 Quire works with Amazon S3, Hetzner, Azure Blob Storage, Google Cloud Storage, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, Wasabi, Scaleway, OVHcloud and any other S3-compatible server, such as MinIO.
 
-On the desktop, a notes folder that is the root of a Git repository can also sync with GitHub. Quire commits the folder, rebases the current branch onto its remote and pushes it, using the Git credentials already configured on the computer. Git reports a conflict and Quire stops so you can resolve it. Pins stay local, and the encryption option does not apply. Android keeps to the object-storage providers.
+A notes folder that is the root of a Git repository can also sync with GitHub. Quire commits the folder, rebases the current branch onto its remote and pushes it, using the Git credentials already configured on the computer. Git reports a conflict and Quire stops so you can resolve it. Pins stay local, and the encryption option does not apply.
 
 - **Encrypt before upload** encrypts each note with AES-256-GCM before upload. The key comes from your passphrase, so the provider stores neither note names nor note text. If you lose the passphrase, nobody can open the remote copy. This option is for object storage; GitHub uses Git.
 - **When to sync** is **On save**, **Every 5 min** or **Manually**. **Sync now** is also in the command palette.
@@ -147,18 +124,16 @@ For object storage, each notes folder syncs to its own remote folder, `quire/<fo
 ## Not in this version
 
 - With "Ask before changes" on, MCP tools that write return an error, because there is no approval prompt yet.
-- GitHub sync is desktop only. It needs Git installed and a notes folder that is the root of a Git repository with a remote.
+- GitHub sync needs Git installed and a notes folder that is the root of a Git repository with a remote.
 - The macOS and Windows builds come from CI and are not tested on those systems yet.
-- On Android, a paste from the context menu inserts no image, and SVG images do not show in the preview.
 
 ## In this repository
 
 | Folder | What it holds |
 | --- | --- |
 | [`desktop/`](desktop) | The desktop app, in Rust with Rune. |
-| [`android/`](android) | The Android app, in Kotlin with Jetpack Compose. |
 | [`site/`](site) | The website, static files served by GitHub Pages. |
-| [`design/`](design) | The design prototype that both apps follow. |
+| [`design/`](design) | The design prototype that the app follows. |
 | [`assets/`](assets) | The brand marks and the fonts, which keep their SIL Open Font License. |
 
 Quire is MIT licensed.

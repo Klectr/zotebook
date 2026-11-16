@@ -1,6 +1,5 @@
 # Builds the desktop app for Linux, macOS and Windows when a version tag is pushed, and attaches
-# the archives to the GitHub release of that tag. The Android APK is signed and attached by hand,
-# so the signing key never leaves the maintainer's machine.
+# the archives to the GitHub release of that tag.
 name: Release
 
 on:

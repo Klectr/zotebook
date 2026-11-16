@@ -9,7 +9,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quire · A plain editor for folders of Markdown files</title>
-<meta name="description" content="Quire edits a folder of plain Markdown files on your disk. Wiki links, tags, search, focus mode, sync to storage you control and an MCP server for AI apps. For Linux and Android.">
+<meta name="description" content="Quire edits a folder of plain Markdown files on your disk. Wiki links, tags, search, focus mode, sync to storage you control and an MCP server for AI apps. For Linux, macOS and Windows.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f8f5ef" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1f1d1a" media="(prefers-color-scheme: dark)">
@@ -19,7 +19,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Quire">
 <meta property="og:title" content="Quire">
-<meta property="og:description" content="A plain editor for folders of Markdown files. For Linux and Android.">
+<meta property="og:description" content="A plain editor for folders of Markdown files. For Linux, macOS and Windows.">
 <meta property="og:url" content="https://bjarneo.github.io/quire/">
 <meta property="og:image" content="https://bjarneo.github.io/quire/assets/og.png">
 <meta property="og:image:width" content="1200">
@@ -27,7 +27,7 @@
 <meta property="og:image:alt" content="The name Quire above a screenshot of the Quire editor with a Markdown note open.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Quire">
-<meta name="twitter:description" content="A plain editor for folders of Markdown files. For Linux and Android.">
+<meta name="twitter:description" content="A plain editor for folders of Markdown files. For Linux, macOS and Windows.">
 <meta name="twitter:image" content="https://bjarneo.github.io/quire/assets/og.png">
 <meta name="twitter:image:alt" content="The name Quire above a screenshot of the Quire editor with a Markdown note open.">
 
@@ -88,7 +88,7 @@
             <span>View source</span>
           </a>
         </div>
-        <p class="meta">Linux desktop and Android. Open source under the MIT licence.</p>
+        <p class="meta">Linux, macOS and Windows. Open source under the MIT licence.</p>
       </div>
     </div>
     <div class="hero-stage">
@@ -357,9 +357,9 @@
       <div class="head">
         <h2 id="sync-title"><span class="md" aria-hidden="true">##</span>Sync to storage you control</h2>
         <div class="prose">
-          <p>Your notes stay on your device first. Quire can keep a copy in object storage that you control, or commit and push the notes folder to GitHub on the desktop.</p>
+          <p>Your notes stay on your device first. Quire can keep a copy in object storage that you control, or commit and push the notes folder to GitHub.</p>
           <p>Turn on Encrypt before upload, and Quire encrypts each note with <span class="nowrap">AES-256-GCM</span> before upload. The key comes from a passphrase. The storage provider sees no note names and no note text. This option is for object storage; GitHub uses Git.</p>
-          <p>Object-storage sync works the same in the desktop app and the Android app, so a note you write on your laptop opens on your phone. GitHub sync is desktop only.</p>
+          <p>Object-storage sync works the same on every computer, so a note you write on your laptop opens on your desktop.</p>
         </div>
       </div>
       <div class="sync-grid">
@@ -396,7 +396,7 @@
           </div>
           <div>
             <dt>format</dt>
-            <dd><p>The object-storage format is open and documented in <a href="https://github.com/bjarneo/quire/blob/main/SYNC.md" data-repo-path="/blob/main/SYNC.md">SYNC.md</a>. The desktop app and the Android app use the same format. GitHub uses Git.</p></dd>
+            <dd><p>The object-storage format is open and documented in <a href="https://github.com/bjarneo/quire/blob/main/SYNC.md" data-repo-path="/blob/main/SYNC.md">SYNC.md</a>. GitHub uses Git.</p></dd>
           </div>
         </dl>
         <figure class="figure" data-switch>
@@ -444,35 +444,6 @@
     </div>
   </section>
 
-  <!--
-    PHONE SCREENSHOTS: this section stays hidden while data-phone-shots="off".
-    To show it, add the three images to assets/ and change the value to "on".
-  -->
-  <section class="section" id="android" data-phone-shots="on" aria-labelledby="android-title">
-    <div class="wrap">
-      <div class="head">
-        <h2 id="android-title"><span class="md" aria-hidden="true">##</span>On your phone</h2>
-        <div class="prose">
-          <p>The Android app is a phone version of the same editor, from the same design.</p>
-        </div>
-      </div>
-      <div class="phones">
-        <figure class="phone">
-          <img src="assets/phone-editor.png" width="1080" height="2400" loading="lazy" decoding="async" alt="Quire on an Android phone with a note in source mode and the Markdown toolbar above the keyboard.">
-          <figcaption>Source</figcaption>
-        </figure>
-        <figure class="phone">
-          <img src="assets/phone-preview.png" width="1080" height="2400" loading="lazy" decoding="async" alt="Quire on an Android phone with the Garden plan note in preview. The note shows an image of the garden beds.">
-          <figcaption>Preview</figcaption>
-        </figure>
-        <figure class="phone">
-          <img src="assets/phone-switcher.png" width="1080" height="2400" loading="lazy" decoding="async" alt="The quick switcher of Quire on an Android phone, with the notes that match the search ea.">
-          <figcaption>Quick switcher</figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
   <section class="section band band--desk" id="download" aria-labelledby="download-title">
     <div class="wrap">
       <h2 id="download-title"><span class="md" aria-hidden="true">##</span>Download</h2>
@@ -486,15 +457,7 @@
               <span>Download for desktop</span>
             </a>
           </div>
-          <div class="platform">
-            <h3>Android</h3>
-            <p>A phone version of the same app, as an APK file. It needs Android 8.0 or newer.</p>
-            <a class="btn btn--primary" href="#download" data-repo-path="/releases/latest">
-              <svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Download the APK</span>
-            </a>
-          </div>
-          <p class="aside">Both links go to the latest release on GitHub. There is no iOS app yet.</p>
+          <p class="aside">The link goes to the latest release on GitHub.</p>
         </div>
         <div class="first-steps">
           <figure class="figure">
