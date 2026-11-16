@@ -97,6 +97,8 @@ pub enum Op {
     WriteBytes { root: PathBuf, rel: String, bytes: Vec<u8> },
     /// Moves a folder, with every file in it, to `.trash`.
     DeleteFolder { root: PathBuf, rel: String },
+    /// Renames a folder, with every file in it, in place.
+    RenameFolder { root: PathBuf, from: String, to: String },
     Mkdir { root: PathBuf, rel: String },
     SaveState(Box<crate::store::Persist>),
     /// Answers once every operation sent before it is done.
@@ -146,7 +148,7 @@ impl Writer {
                         failed2.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         let what = match &op {
                             Op::Write { rel, .. } | Op::WriteBytes { rel, .. } | Op::Delete { rel, .. } | Op::DeleteFolder { rel, .. } | Op::Mkdir { rel, .. } => rel.clone(),
-                            Op::Rename { from, .. } => from.clone(),
+                            Op::Rename { from, .. } | Op::RenameFolder { from, .. } => from.clone(),
                             Op::SaveState(_) => "settings".into(),
                             Op::Barrier(_) | Op::SaveSyncBase { .. } => String::new(),
                         };
@@ -248,6 +250,13 @@ fn apply(op: &Op) -> std::io::Result<()> {
                 n += 1;
             }
             std::fs::rename(src, dst)
+        }
+        Op::RenameFolder { root, from, to } => {
+            let dst = root.join(to);
+            if let Some(d) = dst.parent() {
+                std::fs::create_dir_all(d)?;
+            }
+            std::fs::rename(root.join(from), dst)
         }
         Op::Mkdir { root, rel } => std::fs::create_dir_all(root.join(rel)),
         Op::SaveState(p) => crate::store::save(p),

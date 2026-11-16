@@ -44,6 +44,16 @@ pub struct NewFolder {
     pub edit: TextEdit,
 }
 
+/// The picker that gives a folder an emoji icon.
+pub struct FolderIconPicker {
+    pub folder: String,
+    /// Filters the grid of common emoji.
+    pub search: TextEdit,
+    /// Any other emoji, typed or pasted.
+    pub custom: TextEdit,
+    pub error: Option<String>,
+}
+
 /// A tree row key holds its path with `|` for `/`, since `/` separates keys in element paths.
 pub fn row_key(kind: &str, path: &str) -> String {
     format!("{kind}:{}", path.replace('/', "|"))
@@ -160,7 +170,8 @@ impl App {
         if let Some(p) = self.folder_note(folder) {
             return Some(p);
         }
-        let name = folder.rsplit('/').next().unwrap_or(folder).to_string();
+        let name = md::folder_name(folder);
+        let name = if name.is_empty() { md::folder_segment(folder) } else { name };
         let path = md::folder_note_path(folder);
         let text = format!("# {name}\n\n");
         let v = self.vault.as_mut()?;
@@ -225,6 +236,144 @@ impl App {
         }
         self.persist_later();
         self.sync_after_save();
+    }
+
+    /// Opens the icon picker for `folder`.
+    pub fn start_folder_icon(&mut self, folder: &str, tx: &mut Tx) {
+        if folder.is_empty() || !self.folder_list().iter().any(|f| f == folder) {
+            return;
+        }
+        let mut search = TextEdit::new("");
+        search.focused = true;
+        self.folder_icon = Some(FolderIconPicker { folder: folder.to_string(), search, custom: TextEdit::new(""), error: None });
+        self.tree_menu = None;
+        self.vault_menu = false;
+        tx.focus("folder-icon-search", false);
+    }
+
+    pub fn close_folder_icon(&mut self, tx: &mut Tx) {
+        self.folder_icon = None;
+        self.focus_editor(tx);
+    }
+
+    /// Gives the picker's folder `icon`, or removes its icon with `None`. The icon is the first
+    /// character of the folder name on disk, so this renames the folder.
+    pub fn apply_folder_icon(&mut self, icon: Option<&str>, tx: &mut Tx) {
+        let Some(picker) = &self.folder_icon else { return };
+        let folder = picker.folder.clone();
+        let segment = md::folder_segment(&folder);
+        let name = md::name_without_icon(segment);
+        if name.is_empty() {
+            if let Some(p) = &mut self.folder_icon {
+                p.error = Some("The folder needs a name besides its icon.".into());
+            }
+            return;
+        }
+        let old = md::name_icon(segment);
+        if old == icon {
+            self.close_folder_icon(tx);
+            return;
+        }
+        let name = name.to_string();
+        let new_segment = match icon {
+            Some(i) => format!("{i} {name}"),
+            None => name,
+        };
+        let to = md::join(md::dir(&folder), &new_segment);
+        if !self.rename_folder(&folder, &to) {
+            return;
+        }
+        self.folder_icon = None;
+        self.focus_editor(tx);
+    }
+
+    /// Applies the emoji in the picker's custom field.
+    pub fn apply_custom_folder_icon(&mut self, tx: &mut Tx) {
+        let Some(picker) = &self.folder_icon else { return };
+        let Some(icon) = crate::emoji::single(&picker.custom.text) else {
+            if let Some(p) = &mut self.folder_icon {
+                p.error = Some("Type or paste one emoji.".into());
+            }
+            return;
+        };
+        let icon = icon.to_string();
+        self.apply_folder_icon(Some(&icon), tx);
+    }
+
+    /// Applies the first emoji that matches the picker's search, for Enter in the search field.
+    pub fn apply_searched_folder_icon(&mut self, tx: &mut Tx) {
+        let Some(picker) = &self.folder_icon else { return };
+        if picker.search.text.trim().is_empty() {
+            return;
+        }
+        let Some(icon) = crate::emoji::search(&picker.search.text).first().copied() else { return };
+        self.apply_folder_icon(Some(icon), tx);
+    }
+
+    /// Renames a folder, keeping its notes, tabs and links. The picker only ever changes the last
+    /// part of the path, so the folder stays where it is.
+    fn rename_folder(&mut self, from: &str, to: &str) -> bool {
+        if from.is_empty() || from == to {
+            return false;
+        }
+        if self.folder_list().iter().any(|f| f == to) || self.vault.as_ref().is_some_and(|v| v.path.join(to).exists()) {
+            self.notice = Some(format!("A folder named {} is already there.", md::folder_name(to)));
+            return false;
+        }
+        self.flush_notes();
+        let Some(root) = self.vault.as_ref().map(|v| v.path.clone()) else { return false };
+        let old_pre = format!("{from}/");
+        let new_pre = format!("{to}/");
+        let remap = |p: &str| -> String {
+            if p == from {
+                to.to_string()
+            } else if let Some(rest) = p.strip_prefix(&old_pre) {
+                format!("{new_pre}{rest}")
+            } else {
+                p.to_string()
+            }
+        };
+        if let Some(v) = &mut self.vault {
+            v.folders = std::mem::take(&mut v.folders).into_iter().map(|f| remap(&f)).collect();
+            v.folders.sort();
+            v.folders.dedup();
+            v.files = std::mem::take(&mut v.files).into_iter().map(|(p, t)| (remap(&p), t)).collect();
+            v.born = std::mem::take(&mut v.born).into_iter().map(|(p, b)| (remap(&p), b)).collect();
+        }
+        self.writer.send(Op::RenameFolder { root, from: from.to_string(), to: to.to_string() });
+        // Links that spell out the old path follow it. Bare links reach the folder by its name.
+        if self.settings().update_links {
+            let mut rewritten = Vec::new();
+            if let Some(v) = &mut self.vault {
+                for (p, t) in v.files.iter_mut() {
+                    let nt = md::rewrite_folder_links(t, from, to);
+                    if nt != *t {
+                        *t = nt;
+                        rewritten.push(p.clone());
+                    }
+                }
+            }
+            for p in rewritten {
+                let t = self.files().get(&p).cloned().unwrap_or_default();
+                self.set_text(&p, t);
+            }
+        }
+        self.tabs = std::mem::take(&mut self.tabs).into_iter().map(|p| remap(&p)).collect();
+        self.recent = std::mem::take(&mut self.recent).into_iter().map(|p| remap(&p)).collect();
+        self.pinned = std::mem::take(&mut self.pinned).into_iter().map(|p| remap(&p)).collect();
+        self.expanded = std::mem::take(&mut self.expanded).into_iter().map(|p| remap(&p)).collect();
+        self.unlocked = std::mem::take(&mut self.unlocked).into_iter().map(|(p, u)| (remap(&p), u)).collect();
+        self.edits = std::mem::take(&mut self.edits).into_iter().map(|(p, e)| (remap(&p), e)).collect();
+        self.active = self.active.as_deref().map(remap);
+        self.persist.settings.new_folder = remap(&self.persist.settings.new_folder);
+        if let Some(nf) = &mut self.new_folder {
+            nf.parent = remap(&nf.parent);
+        }
+        self.dragging = None;
+        self.rebuild_names_pub();
+        self.persist_later();
+        self.sync_after_save();
+        true
     }
 
     /// Moves a note into `folder` (`""` is the root), keeping its tab, caret and history.
@@ -457,6 +606,61 @@ mod tests {
         assert_eq!(s.active.as_deref(), Some("Areas/Areas.md"));
         assert!(s.files().contains_key("Areas/Areas.md"));
         assert_eq!(s.folder_note("Projects").as_deref(), Some("Projects/Projects.md"));
+        drop(s);
+        unsafe {
+            for (k, v) in old {
+                match v {
+                    Some(v) => std::env::set_var(k, v),
+                    None => std::env::remove_var(k),
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_folder_icon_renames_the_folder_and_keeps_links() {
+        let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
+        let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
+        let dir = std::env::temp_dir().join(format!("quire-folder-icon-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        std::fs::create_dir_all(vault.join("Party")).unwrap();
+        std::fs::write(vault.join("Party/Plan.md"), "# Plan\n").unwrap();
+        std::fs::write(vault.join("Root.md"), "# Root\n\n[[Party/Plan]] and [[Party]].\n").unwrap();
+        // SAFETY: ENV keeps these variables to this test.
+        unsafe {
+            std::env::set_var("HOME", dir.join("home"));
+            std::env::set_var("XDG_CONFIG_HOME", dir.join("cfg"));
+            std::env::set_var("XDG_DATA_HOME", dir.join("data"));
+        }
+        let mut s = crate::app::init();
+        s.load_vault(&vault).unwrap();
+        let mut tx = Tx::default();
+
+        s.start_folder_icon("Party", &mut tx);
+        s.apply_folder_icon(Some("🎉"), &mut tx);
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join("🎉 Party/Plan.md").is_file(), "the folder and its notes moved");
+        assert!(!vault.join("Party").exists());
+        assert!(s.files().contains_key("🎉 Party/Plan.md"));
+        assert!(s.files()["Root.md"].contains("[[🎉 Party/Plan]]"));
+        assert!(s.files()["Root.md"].contains("[[Party]]"), "a bare link keeps its name");
+
+        s.open_link("Party", &mut tx);
+        assert_eq!(s.active.as_deref(), Some("🎉 Party/Party.md"));
+        s.flush_notes();
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join("🎉 Party/Party.md").is_file());
+
+        s.start_folder_icon("🎉 Party", &mut tx);
+        s.apply_folder_icon(None, &mut tx);
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join("Party/Plan.md").is_file(), "the folder moved back");
+        assert!(vault.join("Party/Party.md").is_file(), "the folder note stayed with it");
+        assert!(s.files()["Root.md"].contains("[[Party/Plan]]"));
+
         drop(s);
         unsafe {
             for (k, v) in old {

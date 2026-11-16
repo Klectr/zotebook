@@ -17,8 +17,9 @@ pub struct Provider {
     pub regions: &'static [(&'static str, &'static str)],
 }
 
-pub const PROVIDERS: [Provider; 12] = [
+pub const PROVIDERS: [Provider; 13] = [
     Provider { id: "none", name: "Local only", full: "", kind: "no sync", regions: &[] },
+    Provider { id: "github", name: "GitHub", full: "GitHub repository", kind: "Git · commit and push", regions: &[] },
     Provider { id: "s3", name: "Amazon S3", full: "Amazon S3", kind: "S3", regions: &[("us-east-1", "us-east-1"), ("us-west-2", "us-west-2"), ("eu-west-1", "eu-west-1"), ("eu-central-1", "eu-central-1"), ("ap-southeast-1", "ap-southeast-1")] },
     Provider { id: "hetzner", name: "Hetzner", full: "Hetzner Object Storage", kind: "Object Storage · S3", regions: &[("fsn1", "fsn1 · Falkenstein"), ("nbg1", "nbg1 · Nuremberg"), ("hel1", "hel1 · Helsinki")] },
     Provider { id: "azure", name: "Azure", full: "Azure Blob Storage", kind: "Blob Storage", regions: &[] },
@@ -106,6 +107,12 @@ pub fn spec(s: &App, pid: &str) -> Vec<Field> {
     let mut out = Vec::new();
     match pid {
         "none" => return out,
+        "github" => {
+            let folder = s.vault.as_ref().map_or(String::new(), |v| v.path.display().to_string());
+            out.push(f("folder", "Notes folder").kind(Kind::Read).wide().opt().value(folder));
+            out.push(f("remote", "Remote").opt().def("origin").hint("the Git remote, usually origin"));
+            return out;
+        }
         "azure" => {
             out.push(f("account", "Storage account").ph("mynotesstorage"));
             out.push(f("container", "Container").ph("notes"));
@@ -209,7 +216,7 @@ pub fn test_sync(s: &mut App) {
         s.sync_status = SyncStatus::Error { msg: format!("Fill in {}.", names.join(", ")), missing: missing.iter().map(|d| d.key.to_string()).collect() };
         return;
     }
-    if s.settings().sync.encrypt && s.settings().sync.pass.chars().count() < 12 {
+    if pid != "github" && s.settings().sync.encrypt && s.settings().sync.pass.chars().count() < 12 {
         s.sync_status = SyncStatus::Error { msg: "The passphrase needs at least 12 characters.".into(), missing: Vec::new() };
         return;
     }
@@ -261,9 +268,12 @@ pub fn sync(v: V) -> El {
         line = line.child(card);
     }
     grid = grid.child(line);
-    let mut c = col().key("sync-set").w_full().child(
-        block(v, "backend", "Storage backend", Some(&crate::md::pretty("Notes always live on this computer first. A backend keeps a copy in object storage you control."))).child(grid),
-    );
+    let desc = if pid == "github" {
+        "Commits the open notes folder with Git and pushes its current branch to the remote. The folder must be the root of a Git repository. Git needs a user name and email for commits."
+    } else {
+        "Notes always live on this computer first. A backend keeps a copy in object storage you control."
+    };
+    let mut c = col().key("sync-set").w_full().child(block(v, "backend", "Storage backend", Some(&crate::md::pretty(desc))).child(grid));
     if pid == "none" {
         return c;
     }
@@ -297,33 +307,50 @@ pub fn sync(v: V) -> El {
     c = c.child(col().key("provider-form").w_full().pt(16.0).pb(18.0).border_sides([1.0, 0.0, 0.0, 0.0], p.line).border_layout().child(label(pv.full, sans(14.0, 500.0), p.ink)).child(form));
     let when = |id: &'static str, l: &str| seg(l, sy.when == id, move |s, _| s.settings_mut().sync.when = id.into());
     c = c.child(row_(v, "when", "When to sync", Some("On save uploads a note a moment after you stop typing."), settings_seg(p, "when-seg", vec![when("save", "On save"), when("interval", "Every 5 min"), when("manual", "Manually")])));
-    let enc = sy.encrypt;
-    c = c.child(row_(
-        v,
-        "encrypt",
-        "Encrypt before upload",
-        Some("Notes are encrypted on this computer, so the provider only stores ciphertext."),
-        switch(p, "enc-switch", enc, "Encrypt before upload", |s, _| {
-            let e = s.settings().sync.encrypt;
-            s.settings_mut().sync.encrypt = !e;
-            s.sync_changed();
-        }),
-    ));
-    if enc {
-        let pass = sy.pass.clone();
+    if pid == "github" {
         c = c.child(
             col()
-                .key("pass")
+                .key("git-note")
                 .w_full()
-                .gap(6.0)
-                .pb(16.0)
-                .child(label("Passphrase", sans(12.5, 500.0), p.ink2))
-                .child(text_box(v, "pass", pass, "At least 12 characters", true, false, 320.0, |s, t| {
-                    s.settings_mut().sync.pass = t;
-                    s.sync_changed();
-                }))
-                .child(label("If you lose this passphrase, the remote copy can't be recovered.", sans(12.0, 400.0), p.mute)),
+                .gap(3.0)
+                .py(16.0)
+                .border_sides([1.0, 0.0, 0.0, 0.0], p.line)
+                .border_layout()
+                .child(label("How it syncs", sans(14.0, 500.0), p.ink))
+                .child(desc_text(
+                    v,
+                    "Quire commits the notes folder, rebases onto the remote branch and pushes it. Use your own Git credentials. Locked notes stay encrypted; other notes are committed as plain text, so use a private repository. Quire keeps .trash out of Git on this computer.",
+                )),
         );
+    } else {
+        let enc = sy.encrypt;
+        c = c.child(row_(
+            v,
+            "encrypt",
+            "Encrypt before upload",
+            Some("Notes are encrypted on this computer, so the provider only stores ciphertext."),
+            switch(p, "enc-switch", enc, "Encrypt before upload", |s, _| {
+                let e = s.settings().sync.encrypt;
+                s.settings_mut().sync.encrypt = !e;
+                s.sync_changed();
+            }),
+        ));
+        if enc {
+            let pass = sy.pass.clone();
+            c = c.child(
+                col()
+                    .key("pass")
+                    .w_full()
+                    .gap(6.0)
+                    .pb(16.0)
+                    .child(label("Passphrase", sans(12.5, 500.0), p.ink2))
+                    .child(text_box(v, "pass", pass, "At least 12 characters", true, false, 320.0, |s, t| {
+                        s.settings_mut().sync.pass = t;
+                        s.sync_changed();
+                    }))
+                    .child(label("If you lose this passphrase, the remote copy can't be recovered.", sans(12.0, 400.0), p.mute)),
+            );
+        }
     }
     let (msg, color) = match &s.sync_status {
         SyncStatus::Idle if sy.connected && s.sync.error.is_some() => (format!("The last sync failed. {}", s.sync.error.clone().unwrap_or_default()), p.err),

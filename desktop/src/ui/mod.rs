@@ -1,6 +1,7 @@
 //! The window's view.
 
 mod editor;
+mod folder_icon;
 mod lock;
 mod outline;
 mod palette;
@@ -88,6 +89,9 @@ pub fn view(s: &App, cx: &mut Cx<App>) -> El {
     }
     if s.lock_dialog.is_some() {
         root = root.child(lock::dialog(v));
+    }
+    if s.folder_icon.is_some() {
+        root = root.child(folder_icon::dialog(v));
     }
     if s.dragging.as_ref().is_some_and(|d| d.active) {
         root = root.child(sidebar::drag_ghost(v));

@@ -215,13 +215,14 @@ fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>, folder_notes: &BTreeSe
         }
     }
     let mut names: Vec<&String> = n.folders.keys().collect();
-    names.sort_by(|a, b| natural(a, b));
+    names.sort_by(|a, b| natural(md::name_without_icon(a), md::name_without_icon(b)).then_with(|| natural(a, b)));
     for name in names {
         let f = &n.folders[name];
         let open = s.expanded.contains(&f.path);
         let path = f.path.clone();
         let menu_path = f.path.clone();
         let add_path = f.path.clone();
+        let emoji = md::name_icon(name);
         let help = if folder_notes.contains(&f.path) { format!("{} · folder note", f.path) } else { f.path.clone() };
         let add = row()
             .key("add")
@@ -235,7 +236,7 @@ fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>, folder_notes: &BTreeSe
             .on_press_tx(move |s: &mut App, tx| s.new_note_in(Some(&add_path), None, tx))
             .child(icon(&PLUS, 10.0).color(v.p.mute));
         rows.push(
-            tree_row(v, &row_key("dir", &f.path), name, depth, true, open, false, None, Some(path.clone()))
+            tree_row(v, &row_key("dir", &f.path), md::name_without_icon(name), depth, true, open, false, None, emoji, Some(path.clone()))
                 .help(help)
                 .on_press_tx(move |s: &mut App, tx| s.open_folder(&path, tx))
                 .on_secondary_press(move |s: &mut App, at, _| s.open_tree_menu(MenuOn::Folder(menu_path.clone()), at.x, at.y))
@@ -256,7 +257,7 @@ fn walk(v: V, n: &Node, depth: usize, rows: &mut Vec<El>, folder_notes: &BTreeSe
 fn note_row(v: V, f: &str, depth: usize) -> El {
     let on = v.s.active.as_deref() == Some(f);
     let (path, drag_path, menu_path) = (f.to_string(), f.to_string(), f.to_string());
-    tree_row(v, &row_key("file", f), md::base(f), depth, false, false, on, None, None)
+    tree_row(v, &row_key("file", f), md::base(f), depth, false, false, on, None, None, None)
         .help(f.to_string())
         .on_press_tx(move |s: &mut App, tx| s.open_file(&path, None, tx))
         .on_drag(move |s: &mut App, d: &mut rune::Drag, tx| s.drag_note(&drag_path, d, tx))
@@ -271,7 +272,7 @@ fn pins_group(v: V, pinned: &[String]) -> El {
     let s = v.s;
     let open = s.pins_open;
     let target = s.dragging.as_ref().is_some_and(|d| d.active && d.pin);
-    let mut head = tree_row(v, "pins-head", "Pinned", 0, true, open, false, Some(&PIN), None)
+    let mut head = tree_row(v, "pins-head", "Pinned", 0, true, open, false, Some(&PIN), None, None)
         .help(format!("{} pinned {}", pinned.len(), if pinned.len() == 1 { "note" } else { "notes" }))
         .on_press(|s: &mut App| s.toggle_pins_open());
     if target {
@@ -283,7 +284,7 @@ fn pins_group(v: V, pinned: &[String]) -> El {
             let mut r = note_row(v, f, 1);
             let dir = md::dir(f);
             if !dir.is_empty() {
-                let name = dir.rsplit('/').next().unwrap_or(dir);
+                let name = md::name_without_icon(dir.rsplit('/').next().unwrap_or(dir));
                 r = r.child(label(name.to_string(), mono(11.0, 400.0), p.mute).shrink().min_w(0.0).truncate());
             }
             c = c.child(r);
@@ -292,9 +293,10 @@ fn pins_group(v: V, pinned: &[String]) -> El {
     c
 }
 
-/// A row of the tree. `glyph` takes the place of the folder icon, as the Pinned group's pin does.
+/// A row of the tree. `glyph` takes the place of the folder icon, as the Pinned group's pin
+/// does. `emoji` is a folder's icon instead of the folder glyph.
 #[allow(clippy::too_many_arguments)]
-fn tree_row(v: V, key: &str, name: &str, depth: usize, folder: bool, open: bool, on: bool, glyph: Option<&'static rune::Icon>, toggle: Option<String>) -> El {
+fn tree_row(v: V, key: &str, name: &str, depth: usize, folder: bool, open: bool, on: bool, glyph: Option<&'static rune::Icon>, emoji: Option<&str>, toggle: Option<String>) -> El {
     let p = v.p;
     let color = if folder || !on { p.ink2 } else { p.ink };
     let weight = if folder || on { 500.0 } else { 400.0 };
@@ -305,6 +307,7 @@ fn tree_row(v: V, key: &str, name: &str, depth: usize, folder: bool, open: bool,
         .center()
         .opacity(if folder { 1.0 } else { 0.0 })
         .child(icon(&CHEVRON_RIGHT, 8.0).color(p.mute).rotate(if open { std::f32::consts::FRAC_PI_2 } else { 0.0 }).rotate_motion(rune::Spring::new(0.12, 0.0)));
+    let icon_path = toggle.clone();
     if let Some(path) = toggle {
         chev = chev.on_press(move |s: &mut App| s.toggle_folder(&path));
     }
@@ -334,8 +337,27 @@ fn tree_row(v: V, key: &str, name: &str, depth: usize, folder: bool, open: bool,
         r = r.opacity(0.5);
     }
     if folder {
-        let glyph = glyph.unwrap_or(if open { &FOLDER_OPEN } else { &FOLDER });
-        r = r.expanded(open).child(el().key("ficon").size(15.0, 15.0).center().child(icon(glyph, 15.0).color(p.mute)));
+        let mut cell = el().key("ficon").size(16.0, 16.0).center();
+        if let Some(icon_path) = icon_path {
+            cell = cell
+                .radius(4.0)
+                .hover(p.hover)
+                .hover_group()
+                .role("button")
+                .label(format!("Change icon for {name}"))
+                .help("Change icon")
+                .on_press_tx(move |s: &mut App, tx| s.start_folder_icon(&icon_path, tx));
+        }
+        match emoji {
+            Some(e) => {
+                cell = cell.child(text(e).font(sans(15.0, 400.0)).color(p.ink2));
+            }
+            None => {
+                let glyph = glyph.unwrap_or(if open { &FOLDER_OPEN } else { &FOLDER });
+                cell = cell.child(icon(glyph, 15.0).color(p.mute));
+            }
+        }
+        r = r.expanded(open).child(cell);
     }
     r.child(text(name).font(sans(13.5, weight)).color(color).truncate().grow(1.0).shrink().min_w(0.0))
 }
@@ -389,13 +411,14 @@ pub fn tree_menu(v: V) -> El {
     let mut items: Vec<(&str, Run)> = Vec::new();
     match m.on.clone() {
         MenuOn::Folder(f) => {
-            let (f1, f2, f3, f4) = (f.clone(), f.clone(), f.clone(), f.clone());
+            let (f1, f2, f3, f4, f5) = (f.clone(), f.clone(), f.clone(), f.clone(), f.clone());
             let (mx, my) = (m.x, m.y);
             let has_note = v.s.folder_note(&f).is_some();
             items.push((
                 if has_note { "Open folder note" } else { "Create folder note" },
                 Box::new(move |s, tx| s.open_folder(&f1, tx)),
             ));
+            items.push(("Change icon…", Box::new(move |s, tx| s.start_folder_icon(&f5, tx))));
             items.push(("New note here", Box::new(move |s, tx| s.new_note_in(Some(&f2), None, tx))));
             items.push(("New folder here", Box::new(move |s, tx| s.start_new_folder(&f3, tx))));
             items.push(("Delete folder", Box::new(move |s, _| s.ask_delete_folder(&f4, mx, my))));

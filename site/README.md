@@ -116,7 +116,7 @@ The screenshots come from the desktop app, rendered headless at 2x and scaled to
 magick settings-sync@2x.png -filter Lanczos -resize 1280x800 -strip site/assets/settings-sync.png
 ```
 
-The sync section describes sync in the desktop app and the Android app. Both apps use the format in `SYNC.md`.
+The sync section describes object-storage sync in the desktop app and the Android app, which use the format in `SYNC.md`, and the desktop-only GitHub option, which uses Git.
 
 ### Make the social image again
 

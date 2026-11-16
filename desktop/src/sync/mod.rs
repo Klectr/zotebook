@@ -10,6 +10,7 @@
 
 pub mod app;
 pub mod crypto;
+pub mod git;
 pub mod sign;
 pub mod store;
 
@@ -84,6 +85,7 @@ pub fn open_store(r: &Remote) -> Result<Box<dyn Store>, String> {
             "HMAC secret",
         )),
         "gcs" => Box::new(store::Gcs::new(&r.val("bucket", ""), &r.val("gcsJson", ""), &r.prefix)?),
+        "github" => return Err("GitHub sync uses Git, not object storage.".into()),
         _ => return Err("Pick a storage backend first.".into()),
     })
 }

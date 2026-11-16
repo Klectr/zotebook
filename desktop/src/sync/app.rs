@@ -151,9 +151,10 @@ impl App {
         let device = super::device_name();
         let pins: std::collections::BTreeSet<String> = self.pinned.iter().cloned().collect();
         self.sync.pins_sent = Some(pins.clone());
+        let github = r.provider == "github";
         self.sync.job = Some(Job::spawn(self.waker.clone(), move || {
             let _ = done.recv_timeout(Duration::from_secs(10));
-            super::run(&r, &root, &device, &pins)
+            if github { super::git::run(&r, &root, &device) } else { super::run(&r, &root, &device, &pins) }
         }));
     }
 
@@ -171,8 +172,17 @@ impl App {
         let Some(r) = self.remote() else { return };
         let notes = self.files().len();
         let before = self.settings().sync.last_sync.is_some();
+        let root = self.vault.as_ref().map(|v| v.path.clone());
+        let github = r.provider == "github";
         self.sync_status = SyncStatus::Testing { msg: "Connecting…".into() };
-        self.sync.test = Some(Job::spawn(self.waker.clone(), move || super::test(&r, notes, before)));
+        self.sync.test = Some(Job::spawn(self.waker.clone(), move || {
+            if github {
+                let Some(root) = root else { return Err("Open a notes folder first.".into()) };
+                super::git::test(&r, &root)
+            } else {
+                super::test(&r, notes, before)
+            }
+        }));
     }
 
     /// Picks up finished jobs and starts due syncs. True when something on screen changed.

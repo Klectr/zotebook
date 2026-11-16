@@ -7,6 +7,26 @@ read and write the same notes.
 The reference code is in `desktop/src/sync/`. The tests in `desktop/src/sync/tests.rs` run two
 devices against one bucket.
 
+## GitHub
+
+GitHub sync is different. It is available in the desktop app only, and only when the notes folder
+is the root of a Git repository with a remote configured. It does not use the object-store format
+in the rest of this file.
+
+For each sync, Quire stages every change, commits it with `Quire: notes from <device>`, rebases
+the current branch onto the remote branch, and pushes. Git authenticates through the credentials
+already configured on the computer: the SSH agent, a credential helper, or the remote URL. The
+current branch is used; Quire does not switch branches.
+
+Pins stay in `state.json` and do not sync with this provider. The **Encrypt before upload** option
+does not apply: locked notes remain encrypted files, and other notes are committed as plain text,
+so use a private repository if that matters. Quire adds `.trash/` to the repository's local
+`.git/info/exclude`, so its trash does not enter the history.
+
+When both the local and remote branches changed the same lines, Git reports a conflict. Quire
+aborts the rebase, keeps the local commit, and stops. Resolve the conflict with Git, then sync
+again.
+
 ## Remote folder
 
 All objects of one notes folder sit under one key prefix. The default prefix is

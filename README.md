@@ -33,7 +33,7 @@ Quire opens a folder and edits the Markdown files in it. There is no database, n
 - **Add images.** Drag an image onto a note, paste one, or use the image button in the toolbar. Quire copies it into `attachments/` and links it. The preview shows `![alt](path)` and `![[name.png]]` images, and web images too.
 - **Link notes.** Write `[[Note name]]` and `Ctrl`-click to follow it. A link to a missing note creates the note. Renaming a note rewrites the links to it.
 - **Find anything.** `Ctrl+O` opens any note by a fuzzy name. `Ctrl+P` runs any command. `Ctrl+Shift+F` searches every note. Tags (`#idea`) get their own list.
-- **Keep folders tidy.** Make folders in the file tree, drag notes into them, and use the `+` on a folder to make a note there. To delete a folder, right-click it. The folder moves to `.trash` with its files. To keep a note at the top of the tree, right-click it and select **Pin**. Pins sync with the notes. In the quick switcher, `Drafts/Idea` makes the note in `Drafts`. On the desktop, a note inside a folder with the folder's own name, such as `Projects/Projects.md`, is the folder's note: it stays out of the tree, and clicking the folder or following `[[Projects]]` opens it, making it if it is missing.
+- **Keep folders tidy.** Make folders in the file tree, drag notes into them, and use the `+` on a folder to make a note there. On the desktop, click a folder's icon to give it any emoji as its icon: the emoji is the first character of the folder name on disk, so it stays with the folder, and the tree shows the rest of the name beside it. To delete a folder, right-click it. The folder moves to `.trash` with its files. To keep a note at the top of the tree, right-click it and select **Pin**. Pins sync with the notes. In the quick switcher, `Drafts/Idea` makes the note in `Drafts`. On the desktop, a note inside a folder with the folder's own name, such as `Projects/Projects.md`, is the folder's note: it stays out of the tree, and clicking the folder or following `[[Projects]]` opens it, making it if it is missing.
 - **Sync your devices.** Keep a notes folder the same on your computers and your phone, through object storage that you control, with optional encryption.
 - **Focus.** `Ctrl+.` or the focus button hides everything but the text, dims the other paragraphs and keeps the line you type near the middle.
 - **Look at home.** Pick a theme for light mode and one for dark mode from 14 themes, such as White, Black, Nord, Gruvbox, Catppuccin, Tokyo Night, Rosé Pine and Solarized. Pick an accent colour, or type any hex value. "Match system" switches between your two themes. On Omarchy, your Omarchy theme is one of the choices. On the desktop, choose one of four monospaced editor fonts, including Maple Mono.
@@ -132,19 +132,22 @@ Quire keeps a copy of your notes in object storage that you control. The desktop
 
 Quire works with Amazon S3, Hetzner, Azure Blob Storage, Google Cloud Storage, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, Wasabi, Scaleway, OVHcloud and any other S3-compatible server, such as MinIO.
 
-- **Encrypt before upload** encrypts each note with AES-256-GCM before upload. The key comes from your passphrase, so the provider stores neither note names nor note text. If you lose the passphrase, nobody can open the remote copy.
+On the desktop, a notes folder that is the root of a Git repository can also sync with GitHub. Quire commits the folder, rebases the current branch onto its remote and pushes it, using the Git credentials already configured on the computer. Git reports a conflict and Quire stops so you can resolve it. Pins stay local, and the encryption option does not apply. Android keeps to the object-storage providers.
+
+- **Encrypt before upload** encrypts each note with AES-256-GCM before upload. The key comes from your passphrase, so the provider stores neither note names nor note text. If you lose the passphrase, nobody can open the remote copy. This option is for object storage; GitHub uses Git.
 - **When to sync** is **On save**, **Every 5 min** or **Manually**. **Sync now** is also in the command palette.
-- When two devices change the same note, Quire keeps both versions. The other device's text goes to `<name> (conflict <device>).md` next to the note.
+- With object storage, when two devices change the same note, Quire keeps both versions. The other device's text goes to `<name> (conflict <device>).md` next to the note. With GitHub, Git reports the conflict and Quire stops so you can resolve it.
 - Images in the notes folder sync too, up to 50 MB each.
 - Folders sync too, empty ones included. A note or a folder that you delete on one device moves to `.trash` on the other devices.
 
-Each notes folder syncs to its own remote folder, `quire/<folder name>/` unless you set another one in **Remote folder**. To sync one notes folder between two devices, give it the same remote folder on both.
+For object storage, each notes folder syncs to its own remote folder, `quire/<folder name>/` unless you set another one in **Remote folder**. To sync one notes folder between two devices, give it the same remote folder on both.
 
 [`SYNC.md`](SYNC.md) describes the remote format, so other tools can read and write it.
 
 ## Not in this version
 
 - With "Ask before changes" on, MCP tools that write return an error, because there is no approval prompt yet.
+- GitHub sync is desktop only. It needs Git installed and a notes folder that is the root of a Git repository with a remote.
 - The macOS and Windows builds come from CI and are not tested on those systems yet.
 - On Android, a paste from the context menu inserts no image, and SVG images do not show in the preview.
 

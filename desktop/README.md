@@ -53,6 +53,7 @@ The script puts the binary in `~/.local/bin/quire`, the icon in `~/.local/share/
 - Moves a note into a folder when you drag it onto the folder. Drop it on the folder name or on empty space to move it to the root. Links that spell out the old folder follow the note.
 - Moves deleted notes to `.trash` inside the folder.
 - Pins a note to the Pinned group at the top of the tree. Right-click the note and select **Pin**, drag it onto the group, select the pin button in the toolbar, or use "Pin note" in the command palette. The file stays in its folder. The tree shows the folder name next to the pinned note. Pins sync with the notes folder when sync is on. Without sync, they are saved in `state.json`.
+- Gives a folder an emoji icon: click its icon in the tree, then pick one from the grid or type or paste any emoji. The emoji is the first character of the folder name on disk, so other apps see it too; the tree shows it as the icon and the rest of the name as the label. **Use default icon** removes it. Links that spell out the old folder follow the rename.
 - Gives a folder its own note: a note inside a folder with the folder's name, such as `Projects/Projects.md`, is hidden from the tree. Clicking the folder opens it, or makes it first, and a `[[Projects]]` link opens it. The chevron still expands and collapses the folder. The folder's right-click menu and the command palette open or make the note too.
 - Deletes a folder from its right-click menu. A folder with notes asks first. The folder moves to `.trash` with every file in it, so you can get it back.
 - Picks up changes that other apps make to the folder while Quire is open.
@@ -99,13 +100,15 @@ Access is read-only by default. Each tool has its own switch, and hidden folders
 
 ## Sync
 
-Settings, Sync & backup connects a notes folder to a bucket. **Test connection** reads the remote folder and reports what it holds. After it passes, Quire syncs when the folder opens, after you save, every 5 minutes, or only when you select **Sync now**, as you choose. The status bar shows the last sync. Select it to open the sync settings.
+Settings, Sync & backup connects a notes folder to a bucket, or to GitHub. **Test connection** reads the remote folder and reports what it holds. After it passes, Quire syncs when the folder opens, after you save, every 5 minutes, or only when you select **Sync now**, as you choose. The status bar shows the last sync. Select it to open the sync settings.
 
-- Each notes folder has its own **Remote folder**. Without a value, it is `quire/<folder name>/`.
+- For object storage, each notes folder has its own **Remote folder**. Without a value, it is `quire/<folder name>/`.
 - Notes, images up to 50 MB and folders sync. A file that you delete on one device moves to `.trash` on the others.
-- A request that the service does not answer in time is tried again up to 4 times. Transfers run 8 at a time.
+- An object-store request that the service does not answer in time is tried again up to 4 times. Transfers run 8 at a time.
 
-Quire keeps a record of the last sync for each folder and bucket in `sync/` in its config folder. The record lets Quire tell an edit from a delete. See [`../SYNC.md`](../SYNC.md) for the format.
+**GitHub** works only when the notes folder is the root of a Git repository. It stages every change, commits it, rebases the current branch onto its remote and pushes. Git uses the credentials already set up on the computer, such as the SSH agent or a credential helper, so no token is stored in Quire. The remote defaults to `origin`; set another name in the form. Git reports a conflict and Quire stops with your local commit intact; resolve it with Git, then sync again. Pins stay local, the encryption option does not apply, and Quire adds `.trash/` to `.git/info/exclude` on that computer. See [`../SYNC.md`](../SYNC.md#github).
+
+Quire keeps a record of the last object-store sync for each folder and bucket in `sync/` in its config folder. The record lets Quire tell an edit from a delete. See [`../SYNC.md`](../SYNC.md) for the format.
 
 ## Not in this version
 
@@ -123,7 +126,7 @@ cargo run -- --script events.json --snap shot.png --at mark:end   # play input e
 ```
 
 - A headless run opens the folder in `QUIRE_FOLDER`. Set `HOME`, `XDG_CONFIG_HOME` and `XDG_DATA_HOME` to an empty folder, so the run does not touch your own settings.
-- The sync tests run two devices against an S3 test server in the test process. Three more tests check a real store, and they only run when you ask for them. Each one reads the settings file in `QUIRE_LIVE_STATE`, and none of them prints a key:
+- The sync tests run two devices against an S3 test server in the test process. The GitHub tests create temporary Git repositories with a local bare remote. Three more tests check a real store, and they only run when you ask for them. Each one reads the settings file in `QUIRE_LIVE_STATE`, and none of them prints a key:
 
   ```sh
   QUIRE_LIVE_STATE=~/.config/quire/state.json cargo test live_ -- --ignored --nocapture

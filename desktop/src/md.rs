@@ -22,22 +22,54 @@ pub fn strip_md(p: &str) -> &str {
     if p.len() >= 3 && p[p.len() - 3..].eq_ignore_ascii_case(".md") { &p[..p.len() - 3] } else { p }
 }
 
-/// The note that belongs to `folder`: a note inside it with the folder's own name.
+/// The last part of a folder path.
+pub fn folder_segment(folder: &str) -> &str {
+    folder.rsplit('/').next().unwrap_or(folder)
+}
+
+/// The emoji a folder name starts with, when it has one. That emoji is the folder's icon.
+pub fn name_icon(name: &str) -> Option<&str> {
+    crate::emoji::leading(name).map(|(icon, _)| icon)
+}
+
+/// A folder name without its leading emoji: the label the tree shows next to the icon.
+pub fn name_without_icon(name: &str) -> &str {
+    crate::emoji::leading(name).map_or(name, |(_, rest)| rest.trim_start())
+}
+
+/// The icon of a folder path, from the last part of the path.
+pub fn folder_icon(folder: &str) -> Option<&str> {
+    name_icon(folder_segment(folder))
+}
+
+/// The last part of a folder path, without its icon.
+pub fn folder_name(folder: &str) -> &str {
+    name_without_icon(folder_segment(folder))
+}
+
+/// The note that belongs to `folder`: a note inside it with the folder's own name, without the
+/// folder's emoji icon.
 pub fn folder_note_path(folder: &str) -> String {
-    let name = folder.rsplit('/').next().unwrap_or(folder);
+    let name = folder_name(folder);
+    let name = if name.is_empty() { folder_segment(folder) } else { name };
     join(folder, &format!("{name}.md"))
+}
+
+/// Whether `note` names the folder `segment`. A folder note made before icons were kept its
+/// name from the whole folder name, so that name works too.
+fn folder_note_named(note: &str, segment: &str) -> bool {
+    same_name(note, segment) || same_name(note, name_without_icon(segment))
 }
 
 /// Whether `path` is the note of the folder it lives in, such as `Projects/Projects.md`.
 pub fn is_folder_note(path: &str) -> bool {
     let folder = dir(path);
-    !folder.is_empty() && same_name(base(path), folder.rsplit('/').next().unwrap_or(folder))
+    !folder.is_empty() && folder_note_named(base(path), folder_segment(folder))
 }
 
 /// Whether `path` is the note of `folder`, such as `Projects/Projects.md`.
 pub fn is_folder_note_in(path: &str, folder: &str) -> bool {
-    let name = folder.rsplit('/').next().unwrap_or(folder);
-    !folder.is_empty() && dir(path) == folder && same_name(base(path), name)
+    !folder.is_empty() && dir(path) == folder && folder_note_named(base(path), folder_segment(folder))
 }
 
 /// Two names equal, ignoring case. ASCII, the common case, compares without allocating.
@@ -55,7 +87,13 @@ pub fn folder_for_link(folders: &[String], target: &str) -> Option<String> {
     if t.contains('/') {
         return folders.iter().find(|f| f.as_str() == t).cloned();
     }
-    let mut hits: Vec<&String> = folders.iter().filter(|f| f.rsplit('/').next().is_some_and(|n| same_name(n, t))).collect();
+    let mut hits: Vec<&String> = folders
+        .iter()
+        .filter(|f| {
+            let n = folder_segment(f);
+            same_name(n, t) || same_name(name_without_icon(n), t)
+        })
+        .collect();
     hits.sort_by_key(|f| (f.matches('/').count(), f.len(), (*f).clone()));
     hits.first().map(|f| (*f).clone())
 }
@@ -710,6 +748,73 @@ pub fn rewrite_links(text: &str, old: &str, new: &str) -> String {
     out
 }
 
+/// Rewrites wiki links that spell out `old` or a note inside it to `new`, as when a folder gets
+/// an emoji icon or its icon changes. Bare links such as `[[Party]]` keep working by name.
+pub fn rewrite_folder_links(text: &str, old: &str, new: &str) -> String {
+    if old == new || old.is_empty() {
+        return text.to_string();
+    }
+    let old_name = name_without_icon(folder_segment(old));
+    let by_name = old_name != folder_segment(old) || name_without_icon(folder_segment(new)) != folder_segment(new);
+    let target = |t: &str| -> Option<String> {
+        // A bare link to a folder with no icon reaches it by name, so it stays as it is.
+        if !old.contains('/') && folder_icon(old).is_none() && t.eq_ignore_ascii_case(old) {
+            return None;
+        }
+        if let Some(rest) = path_prefix(t, old) {
+            return Some(format!("{new}{rest}"));
+        }
+        // A path that uses the label without the old icon, such as Party/Plan, follows the
+        // folder to its new name.
+        if by_name && !old_name.is_empty() && t.contains('/')
+            && let Some(rest) = path_prefix(t, old_name)
+        {
+            return Some(format!("{new}{rest}"));
+        }
+        None
+    };
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(a) = rest.find("[[") {
+        out.push_str(&rest[..a]);
+        let after = &rest[a + 2..];
+        let Some(e) = after.find("]]") else {
+            out.push_str(&rest[a..]);
+            rest = "";
+            break;
+        };
+        let inner = &after[..e];
+        let (link, alias) = match inner.find('|') {
+            Some(k) => (&inner[..k], &inner[k..]),
+            None => (inner, ""),
+        };
+        out.push_str("[[");
+        match target(link.trim()).filter(|_| !inner.contains('\n')) {
+            Some(t) => {
+                out.push_str(&t);
+                out.push_str(alias);
+            }
+            None => out.push_str(inner),
+        }
+        out.push_str("]]");
+        rest = &after[e + 2..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `s` without a case-insensitive `prefix`, if it starts with it. A prefix matches a whole path
+/// part: `Party` matches `Party` and `Party/Plan`, not `Party Time`.
+fn path_prefix<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
+    if s.len() == prefix.len() && s.eq_ignore_ascii_case(prefix) {
+        return Some("");
+    }
+    if s.len() > prefix.len() && s.is_char_boundary(prefix.len()) && s[..prefix.len()].eq_ignore_ascii_case(prefix) && s.as_bytes()[prefix.len()] == b'/' {
+        return Some(&s[prefix.len()..]);
+    }
+    None
+}
+
 // ---------- Preview blocks ----------
 
 #[derive(Clone, Debug)]
@@ -1026,6 +1131,37 @@ mod tests {
         assert!(!is_folder_note("Projects/Overview.md"));
         assert!(!is_folder_note("Projects.md"));
         assert_eq!(folder_note_path("A/Projects"), "A/Projects/Projects.md");
+    }
+
+    #[test]
+    fn an_emoji_is_the_folder_icon() {
+        assert_eq!(name_icon("🎉 Party"), Some("🎉"));
+        assert_eq!(name_icon("Party"), None);
+        assert_eq!(name_without_icon("🎉 Party"), "Party");
+        assert_eq!(folder_icon("Archive/🎉 Party"), Some("🎉"));
+        assert_eq!(folder_name("Archive/🎉 Party"), "Party");
+        assert_eq!(folder_note_path("🎉 Party"), "🎉 Party/Party.md");
+        assert!(is_folder_note("🎉 Party/Party.md"));
+        assert!(is_folder_note_in("🎉 Party/Party.md", "🎉 Party"));
+        assert!(is_folder_note_in("🎉 Party/🎉 Party.md", "🎉 Party"));
+        assert_eq!(folder_for_link(&["Archive".into(), "🎉 Party".into()], "Party"), Some("🎉 Party".into()));
+    }
+
+    #[test]
+    fn folder_links_follow_an_icon() {
+        let t = "x [[Party]] [[Party/Plan]] [[Party Time]]";
+        assert_eq!(
+            rewrite_folder_links(t, "Party", "🎉 Party"),
+            "x [[Party]] [[🎉 Party/Plan]] [[Party Time]]"
+        );
+        assert_eq!(
+            rewrite_folder_links("[[🎉 Party/Plan|plan]] [[Party]]", "🎉 Party", "Party"),
+            "[[Party/Plan|plan]] [[Party]]"
+        );
+        assert_eq!(
+            rewrite_folder_links("[[Party/Plan]]", "🎉 Party", "🏠 Party"),
+            "[[🏠 Party/Plan]]"
+        );
     }
 
     #[test]

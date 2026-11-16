@@ -143,6 +143,8 @@ pub struct App {
     pub dragging: Option<crate::folders::DragNote>,
     pub tree_menu: Option<crate::folders::TreeMenu>,
     pub new_folder: Option<crate::folders::NewFolder>,
+    /// The emoji picker for a folder's icon.
+    pub folder_icon: Option<crate::folders::FolderIconPicker>,
     pub sync: crate::sync::app::SyncState,
     pub images: crate::images::Images,
     /// Files are dragged over the note.
@@ -217,6 +219,7 @@ pub fn init() -> App {
         dragging: None,
         tree_menu: None,
         new_folder: None,
+        folder_icon: None,
         sync: Default::default(),
         images: Default::default(),
         drop_over: false,
@@ -702,6 +705,8 @@ impl App {
         self.settings_open = false;
         self.vault_menu = false;
         self.renaming = None;
+        self.folder_icon = None;
+        self.tree_menu = None;
         self.ensure_edit();
         if self.mode == Mode::Source {
             if let Some(e) = self.cur_edit_opt() {
@@ -744,6 +749,8 @@ impl App {
         self.vault_menu = false;
         self.focus = false;
         self.renaming = None;
+        self.folder_icon = None;
+        self.tree_menu = None;
         self.persist.last = None;
         self.watcher = None;
         self.refresh_counts();
@@ -1156,7 +1163,9 @@ impl App {
 
     /// Escape closes the topmost thing, as in the design.
     pub fn escape(&mut self, tx: &mut Tx) -> bool {
-        if self.palette.is_some() {
+        if self.folder_icon.is_some() {
+            self.close_folder_icon(tx);
+        } else if self.palette.is_some() {
             self.close_palette(tx);
         } else if self.settings_open {
             self.settings_open = false;

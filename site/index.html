@@ -222,6 +222,7 @@
           <p>Notes open in tabs. The file tree on the left shows the folder as it is on disk.</p>
           <p>Make folders in the file tree and drag notes into them. To create a note in a folder, use the + on the row of that folder. You can also type <code>Folder/Name</code> in the quick switcher. To keep a note at the top of the tree, right-click it and select <b>Pin</b>. Pins sync with the notes.</p>
           <p>On the desktop, a note inside a folder with the folder's own name is the folder's note. It stays out of the tree; clicking the folder or following <code>[[Projects]]</code> opens it, making it first if it is missing.</p>
+          <p>On the desktop, click a folder's icon to give it an emoji. The emoji becomes the first character of the folder name on disk, so it stays with the folder; the tree shows it as the icon and the rest of the name as the label.</p>
         </div>
       </div>
       <figure class="figure" data-switch>
@@ -356,9 +357,9 @@
       <div class="head">
         <h2 id="sync-title"><span class="md" aria-hidden="true">##</span>Sync to storage you control</h2>
         <div class="prose">
-          <p>Your notes stay on your device first. Quire can keep a copy in object storage that you control.</p>
-          <p>Turn on Encrypt before upload, and Quire encrypts each note with <span class="nowrap">AES-256-GCM</span> before upload. The key comes from a passphrase. The storage provider sees no note names and no note text.</p>
-          <p>Sync works the same in the desktop app and the Android app, so a note you write on your laptop opens on your phone.</p>
+          <p>Your notes stay on your device first. Quire can keep a copy in object storage that you control, or commit and push the notes folder to GitHub on the desktop.</p>
+          <p>Turn on Encrypt before upload, and Quire encrypts each note with <span class="nowrap">AES-256-GCM</span> before upload. The key comes from a passphrase. The storage provider sees no note names and no note text. This option is for object storage; GitHub uses Git.</p>
+          <p>Object-storage sync works the same in the desktop app and the Android app, so a note you write on your laptop opens on your phone. GitHub sync is desktop only.</p>
         </div>
       </div>
       <div class="sync-grid">
@@ -382,16 +383,20 @@
             </dd>
           </div>
           <div>
+            <dt>github</dt>
+            <dd><p>On the desktop, commit and push a notes folder that is the root of a Git repository. Quire uses the Git credentials already set up on the computer.</p></dd>
+          </div>
+          <div>
             <dt>when</dt>
             <dd><p>On save, every 5 minutes, or manually.</p></dd>
           </div>
           <div>
             <dt>conflicts</dt>
-            <dd><p>If two devices change the same note, Quire keeps both versions. The second version is a copy named <code>&lt;name&gt; (conflict &lt;device&gt;).md</code>.</p></dd>
+            <dd><p>With object storage, if two devices change the same note, Quire keeps both versions. The second version is a copy named <code>&lt;name&gt; (conflict &lt;device&gt;).md</code>. With GitHub, Git reports the conflict and Quire stops so you can resolve it.</p></dd>
           </div>
           <div>
             <dt>format</dt>
-            <dd><p>The format is open and documented in <a href="https://github.com/bjarneo/quire/blob/main/SYNC.md" data-repo-path="/blob/main/SYNC.md">SYNC.md</a>. The desktop app and the Android app use the same format.</p></dd>
+            <dd><p>The object-storage format is open and documented in <a href="https://github.com/bjarneo/quire/blob/main/SYNC.md" data-repo-path="/blob/main/SYNC.md">SYNC.md</a>. The desktop app and the Android app use the same format. GitHub uses Git.</p></dd>
           </div>
         </dl>
         <figure class="figure" data-switch>
