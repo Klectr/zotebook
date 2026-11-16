@@ -672,4 +672,50 @@ mod tests {
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn todays_entry_goes_in_the_journal_folder_with_an_icon() {
+        let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
+        let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
+        let dir = std::env::temp_dir().join(format!("quire-journal-icon-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        std::fs::create_dir_all(vault.join("Journal")).unwrap();
+        std::fs::write(vault.join("Journal/2020-01-01.md"), "# Old\n").unwrap();
+        // SAFETY: ENV keeps these variables to this test.
+        unsafe {
+            std::env::set_var("HOME", dir.join("home"));
+            std::env::set_var("XDG_CONFIG_HOME", dir.join("cfg"));
+            std::env::set_var("XDG_DATA_HOME", dir.join("data"));
+        }
+        let mut s = crate::app::init();
+        s.load_vault(&vault).unwrap();
+        let mut tx = Tx::default();
+
+        s.start_folder_icon("Journal", &mut tx);
+        s.apply_folder_icon(Some("📓"), &mut tx);
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join("📓 Journal/2020-01-01.md").is_file());
+
+        s.open_today(&mut tx);
+        let active = s.active.clone().unwrap();
+        assert!(active.starts_with("📓 Journal/"), "today's entry is {active}");
+        s.flush_notes();
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join(&active).is_file(), "today's entry is on disk");
+        assert!(!vault.join("Journal").exists(), "no second Journal folder");
+        assert!(!s.folder_list().iter().any(|f| f == "Journal"));
+
+        drop(s);
+        unsafe {
+            for (k, v) in old {
+                match v {
+                    Some(v) => std::env::set_var(k, v),
+                    None => std::env::remove_var(k),
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
