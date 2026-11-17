@@ -163,6 +163,7 @@ impl App {
         let Some(v) = &self.vault else { return };
         for rel in std::mem::take(&mut self.dirty) {
             if let Some(text) = v.files.get(&rel) {
+                crate::app::remember_save(&mut self.saved, &rel, text);
                 self.writer.send(Op::Write { root: v.path.clone(), rel, text: text.clone() });
             }
         }

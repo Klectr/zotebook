@@ -136,6 +136,9 @@ pub struct App {
     pub key_moved: bool,
     pub(crate) waker: Option<rune::Waker>,
     watcher: Option<crate::watch::Watcher>,
+    /// The texts this app last saved to each note. The watcher sees those saves too, and one
+    /// can reach it after newer typing, so a change that matches one of them is not news.
+    pub(crate) saved: HashMap<String, std::collections::VecDeque<u64>>,
     /// Counts name lookups rebuilt, so cached lines redraw when a link's target appears.
     pub names_gen: u64,
     /// Set by the theme watcher when Omarchy switches themes.
@@ -214,6 +217,7 @@ pub fn init() -> App {
         key_moved: false,
         waker: None,
         watcher: None,
+        saved: HashMap::new(),
         names_gen: 0,
         theme_changed: None,
         dragging: None,
@@ -474,7 +478,7 @@ impl App {
         }
         let mut any = false;
         for (rel, text) in c.changed {
-            if self.dirty.contains(&rel) || self.files().get(&rel) == Some(&text) {
+            if self.dirty.contains(&rel) || self.files().get(&rel) == Some(&text) || was_saved(&self.saved, &rel, &text) {
                 continue;
             }
             if self.unlocked.contains_key(&rel) {
@@ -597,6 +601,7 @@ impl App {
         let wrote = !self.dirty.is_empty();
         for rel in std::mem::take(&mut self.dirty) {
             if let Some(text) = v.files.get(&rel) {
+                remember_save(&mut self.saved, &rel, text);
                 self.writer.send(Op::Write { root: v.path.clone(), rel, text: text.clone() });
             }
         }
@@ -692,6 +697,7 @@ impl App {
         self.persist.last = Some(path.to_path_buf());
         self.vault = Some(v);
         self.edits.clear();
+        self.saved.clear();
         self.rebuild_names();
         if self.waker.is_some() {
             self.watch_vault();
@@ -1220,6 +1226,31 @@ impl App {
     }
 }
 
+/// How many of a note's own saves to remember. The watcher looks every 1.5 s and saves come
+/// at most every 0.5 s, so a few cover the saves it can still report.
+const SAVES_KEPT: usize = 8;
+
+fn text_hash(text: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut h);
+    h.finish()
+}
+
+/// Notes that `text` is going to disk as `rel`.
+pub(crate) fn remember_save(saved: &mut HashMap<String, std::collections::VecDeque<u64>>, rel: &str, text: &str) {
+    let q = saved.entry(rel.to_string()).or_default();
+    q.push_back(text_hash(text));
+    while q.len() > SAVES_KEPT {
+        q.pop_front();
+    }
+}
+
+/// Whether `text` is one of this app's own recent saves of `rel`.
+fn was_saved(saved: &HashMap<String, std::collections::VecDeque<u64>>, rel: &str, text: &str) -> bool {
+    saved.get(rel).is_some_and(|q| q.contains(&text_hash(text)))
+}
+
 pub(crate) fn now_ns() -> u128 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos())
 }
@@ -1233,4 +1264,50 @@ fn long_date(year: i32, month: u32, day: u32) -> String {
     let y = if month < 3 { year - 1 } else { year };
     let w = (y + y / 4 - y / 100 + y / 400 + T[(month as usize + 11) % 12] + day as i32).rem_euclid(7);
     format!("{} {} {}", DAYS[w as usize], day, MONTHS[(month as usize + 11) % 12])
+}
+
+#[cfg(test)]
+mod watch_tests {
+    /// The watcher can read a save of this app after newer typing has gone out. That old save
+    /// must not replace what is in the editor, but an edit from another app still comes in.
+    #[test]
+    fn an_old_save_seen_on_disk_does_not_undo_typing() {
+        let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = std::env::temp_dir().join(format!("quire-echo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        std::fs::create_dir_all(&vault).unwrap();
+        std::fs::write(vault.join("Note.md"), "x").unwrap();
+        // SAFETY: the ENV lock keeps other tests that read these variables out.
+        unsafe {
+            std::env::set_var("HOME", dir.join("home"));
+            std::env::set_var("XDG_CONFIG_HOME", dir.join("cfg"));
+            std::env::set_var("XDG_DATA_HOME", dir.join("data"));
+        }
+        let mut s = super::init();
+        s.load_vault(&vault).unwrap();
+        s.active = Some("Note.md".into());
+        s.cur_edit();
+        // A watcher that never looks: the test hands it what it "saw".
+        s.watcher = Some(crate::watch::start(dir.join("nothing"), None));
+        let saw = |s: &mut super::App, text: &str| {
+            s.watcher.as_ref().unwrap().inbox.lock().unwrap().changed.push(("Note.md".into(), text.into()));
+            s.apply_outside_changes();
+        };
+
+        s.set_text("Note.md", "xa".into());
+        s.flush_notes();
+        s.set_text("Note.md", "xab".into());
+        s.flush_notes();
+        saw(&mut s, "xa");
+        assert_eq!(s.cur_edit().text, "xab", "the old save is ignored");
+        assert_eq!(s.files()["Note.md"], "xab");
+
+        saw(&mut s, "xab, edited elsewhere");
+        assert_eq!(s.cur_edit().text, "xab, edited elsewhere", "an outside edit still comes in");
+
+        s.writer.wait(std::time::Duration::from_secs(5));
+        drop(s);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
