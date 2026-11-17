@@ -9,6 +9,7 @@ mod commands;
 mod emoji;
 mod folders;
 mod format;
+mod frontmatter;
 mod html2md;
 mod images;
 mod keys;

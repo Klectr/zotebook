@@ -1022,10 +1022,12 @@ fn join_lines(lines: &[&str]) -> String {
     out
 }
 
+/// The preview blocks of a note. Front matter stays out of the preview, and the blocks after it
+/// keep their line numbers in the note.
 pub fn blocks(text: &str) -> Vec<Block> {
     let lines: Vec<&str> = text.split('\n').collect();
     let mut out = Vec::new();
-    let mut i = 0;
+    let mut i = crate::frontmatter::parse(text).map_or(0, |fm| fm.lines);
     let mut hi = 0;
     while i < lines.len() {
         let ln = lines[i];
@@ -1170,6 +1172,18 @@ mod tests {
         assert_eq!(journal_folder(["journal"]), Some("journal"));
         assert_eq!(journal_folder(["Docs/📓 Journal", "Journals", "My Journal"]), None);
         assert_eq!(journal_folder(["Docs"]), None);
+    }
+
+    #[test]
+    fn the_preview_leaves_out_front_matter() {
+        let b = blocks("---\nsticker: 🌱\ntags: [a]\n---\n# Plan\n\nText");
+        assert_eq!(b.len(), 2, "{b:?}");
+        assert!(matches!(&b[0], Block::Heading { line: 4, text, .. } if text == "Plan"));
+        assert!(matches!(&b[1], Block::Para { line: 6, text } if text == "Text"));
+
+        let rules = blocks("---\nNot keys.\n---\n");
+        assert!(matches!(rules[0], Block::Rule), "a note that starts with a rule keeps it: {rules:?}");
+        assert!(matches!(&blocks("Text\n---\na: b\n---\n")[0], Block::Para { line: 0, .. }));
     }
 
     #[test]
