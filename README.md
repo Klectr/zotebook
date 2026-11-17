@@ -11,7 +11,7 @@
 Each note is a <code>.md</code> file on your disk, so any other app can open it.</p>
 
 <p align="center">
-  <a href="https://bjarneo.github.io/quire/">Website</a> ·
+  <a href="https://tristonarmstrong.github.io/quire/">Website</a> ·
   <a href="#install">Install</a> ·
   <a href="#sync-your-devices">Sync</a> ·
   <a href="#use-it-with-your-ai-tools">MCP server</a> ·
@@ -61,7 +61,7 @@ Quire opens a folder and edits the Markdown files in it. There is no database, n
 
 ## Install
 
-Download the build for your system from the [latest release](https://github.com/bjarneo/quire/releases/latest):
+Download the build for your system from the [latest release](https://github.com/tristonarmstrong/quire/releases/latest):
 
 | System | File |
 | --- | --- |
@@ -76,7 +76,7 @@ Quire is pre-release. To build it yourself, follow the steps below.
 You need Rust and, on Linux, the `libxkbcommon` and `wayland` development packages. `rustup` installs the pinned toolchain on the first build.
 
 ```sh
-git clone https://github.com/bjarneo/quire
+git clone https://github.com/tristonarmstrong/quire
 cd quire/desktop
 ./install.sh        # builds, then installs quire, its icon and a launcher entry for your user
 quire ~/notes       # or open Quire from the app launcher

@@ -31,10 +31,10 @@ Then open <http://localhost:8000>. You can also open `site/index.html` directly 
 The repository URL is in one place: the `data-repo` attribute on the `<html>` element in `index.html`.
 
 ```html
-<html lang="en" data-repo="https://github.com/bjarneo/quire">
+<html lang="en" data-repo="https://github.com/tristonarmstrong/quire">
 ```
 
-The page points to `https://github.com/bjarneo/quire`. To move it, change that value. `site.js` builds every source, release and issue link from this value. The download buttons point to `<repo>/releases/latest`.
+The page points to `https://github.com/tristonarmstrong/quire`. To move it, change that value. `site.js` builds every source, release and issue link from this value. The download buttons point to `<repo>/releases/latest`.
 
 Social previews need absolute URLs, and a script cannot set them for crawlers. The `canonical`, `og:url`, `og:image` and `twitter:image` tags use the placeholder site URL `https://OWNER.github.io/quire/`.
 
