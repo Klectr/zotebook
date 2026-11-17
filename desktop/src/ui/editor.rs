@@ -107,6 +107,9 @@ fn doc_scroll(v: V) -> El {
         if !focus {
             column = column.child(crumb(v));
         }
+        if let Some(icon) = s.active.as_deref().and_then(md::note_icon) {
+            column = column.child(sticker(v, icon));
+        }
         let locked = s.active.as_deref().is_some_and(|a| s.note_locked(a));
         column = column.child(if locked {
             super::lock::panel(v)
@@ -246,33 +249,39 @@ fn toolbar(v: V) -> El {
         .child(lock_button(v))
 }
 
+/// The note's file name in the crumb. A click renames it.
+fn crumb_file(v: V, active: &str, style: TextStyle) -> El {
+    let p = v.p;
+    row()
+        .key("crumb-file")
+        .px(5.0)
+        .py(2.0)
+        .mx(-5.0)
+        .radius(5.0)
+        .hover(p.hover)
+        .role("button")
+        .label("Rename note")
+        .help("Rename note")
+        .cursor(rune::Cursor::Text)
+        .on_press_tx(|s: &mut App, tx| s.start_rename(tx))
+        .child(label(md::base(active), style, p.ink2))
+        .child(label(".md", style, p.mark))
+}
+
 fn crumb(v: V) -> El {
     let p = v.p;
     let s = v.s;
     let active = s.active.clone().unwrap_or_default();
     let dir = md::dir(&active).to_string();
     let style = mono(12.0, 400.0);
-    let mut r = row().key("crumb").h(24.0).mb(30.0).gap(6.0).center_y();
+    let mut r = row().key("crumb").h(24.0).mb(30.0).gap(6.0).center_y().hover_group();
     if !dir.is_empty() {
         r = r.child(label(dir, style, p.mute)).child(label("/", style, p.mark));
     }
+    let add_icon = md::note_icon(&active).is_none();
     match &s.renaming {
-        None => r.child(
-            row()
-                .key("crumb-file")
-                .px(5.0)
-                .py(2.0)
-                .mx(-5.0)
-                .radius(5.0)
-                .hover(p.hover)
-                .role("button")
-                .label("Rename note")
-                .help("Rename note")
-                .cursor(rune::Cursor::Text)
-                .on_press_tx(|s: &mut App, tx| s.start_rename(tx))
-                .child(label(md::base(&active), style, p.ink2))
-                .child(label(".md", style, p.mark)),
-        ),
+        None if add_icon => r.child(crumb_file(v, &active, style)).child(add_icon_button(v)),
+        None => r.child(crumb_file(v, &active, style)),
         Some(edit) => {
             let w = (edit.text.chars().count() as f32 + 1.0).max(8.0) * 12.0 * 0.6 + 10.0;
             r.child(
@@ -303,6 +312,51 @@ fn crumb(v: V) -> El {
             )
         }
     }
+}
+
+/// The note's icon, large above the text, as a page icon in Notion. A click changes it.
+fn sticker(v: V, icon: &str) -> El {
+    let p = v.p;
+    row().key("sticker-row").w_full().mb(14.0).child(
+        row()
+            .key("sticker")
+            .padding(4.0)
+            .mx(-4.0)
+            .radius(10.0)
+            .hover(p.hover)
+            .role("button")
+            .label("Change icon")
+            .help("Change icon")
+            .on_press_tx(|s: &mut App, tx| {
+                if let Some(a) = s.active.clone() {
+                    s.start_note_icon(&a, tx);
+                }
+            })
+            .child(text(icon.to_string()).font(sans(64.0, 400.0).lh(76.0))),
+    )
+}
+
+/// The crumb's "Add icon" button for a note without an icon. It shows while the pointer is
+/// over the crumb, as Notion's does over the title.
+fn add_icon_button(v: V) -> El {
+    let p = v.p;
+    row()
+        .key("add-icon")
+        .ml(10.0)
+        .px(6.0)
+        .py(2.0)
+        .radius(5.0)
+        .hover(p.hover)
+        .group_opacity(0.0, 1.0)
+        .role("button")
+        .label("Add icon")
+        .help("Give this note an emoji icon")
+        .on_press_tx(|s: &mut App, tx| {
+            if let Some(a) = s.active.clone() {
+                s.start_note_icon(&a, tx);
+            }
+        })
+        .child(label("☺ Add icon", sans(12.0, 400.0), p.mute))
 }
 
 fn source(v: V) -> El {

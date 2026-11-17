@@ -1025,10 +1025,22 @@ impl App {
             self.focus_editor(tx);
             return;
         }
+        let update = self.settings().update_links;
+        self.rename_note(&old, &val, update);
+        self.focus_editor(tx);
+    }
+
+    /// Renames the note at `old` to `val` in the same folder, keeping its tabs, edits and lock.
+    /// With `update`, links to the old name follow it.
+    pub fn rename_note(&mut self, old: &str, val: &str, update: bool) {
+        let old = old.to_string();
+        let np = md::join(md::dir(&old), &format!("{val}.md"));
+        if np == old || self.files().contains_key(&np) || !self.files().contains_key(&old) {
+            return;
+        }
         // Pending writes go first, so the file to rename exists on disk.
         self.flush_notes();
         let old_base = md::base(&old).to_string();
-        let update = self.settings().update_links;
         let Some(v) = &mut self.vault else { return };
         let root = v.path.clone();
         let text = v.files.remove(&old).unwrap_or_default();
@@ -1039,7 +1051,7 @@ impl App {
         let mut rewritten = Vec::new();
         if update {
             for (p, t) in v.files.iter_mut() {
-                let nt = md::rewrite_links(t, &old_base, &val);
+                let nt = md::rewrite_links(t, &old_base, val);
                 if nt != *t {
                     *t = nt;
                     rewritten.push(p.clone());
@@ -1063,9 +1075,10 @@ impl App {
                 *t = np.clone();
             }
         }
-        self.active = Some(np);
+        if self.active.as_deref() == Some(old.as_str()) {
+            self.active = Some(np);
+        }
         self.rebuild_names();
-        self.focus_editor(tx);
         self.persist_later();
         self.sync_after_save();
     }

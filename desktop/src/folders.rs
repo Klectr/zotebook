@@ -44,9 +44,12 @@ pub struct NewFolder {
     pub edit: TextEdit,
 }
 
-/// The picker that gives a folder an emoji icon.
+/// The picker that gives a folder, or a note, an emoji icon.
 pub struct FolderIconPicker {
     pub folder: String,
+    /// The note whose icon this picks, instead of the folder's. The icon is the first
+    /// character of the note's file name, as a folder's is of the folder name.
+    pub note: Option<String>,
     /// Filters the grid of common emoji.
     pub search: TextEdit,
     /// Any other emoji, typed or pasted.
@@ -245,9 +248,29 @@ impl App {
         }
         let mut search = TextEdit::new("");
         search.focused = true;
-        self.folder_icon = Some(FolderIconPicker { folder: folder.to_string(), search, custom: TextEdit::new(""), error: None });
+        self.folder_icon = Some(FolderIconPicker { folder: folder.to_string(), note: None, search, custom: TextEdit::new(""), error: None });
         self.tree_menu = None;
         self.vault_menu = false;
+        tx.focus("folder-icon-search", false);
+    }
+
+    /// Opens the icon picker for the note at `path`. A folder note that shows its folder's
+    /// icon changes the folder's icon instead, since that is the icon it shows.
+    pub fn start_note_icon(&mut self, path: &str, tx: &mut Tx) {
+        if !self.files().contains_key(path) {
+            return;
+        }
+        if md::name_icon(md::base(path)).is_none() && md::note_icon(path).is_some() {
+            self.start_folder_icon(md::dir(path), tx);
+            return;
+        }
+        let mut search = TextEdit::new("");
+        search.focused = true;
+        let folder = md::dir(path).to_string();
+        self.folder_icon = Some(FolderIconPicker { folder, note: Some(path.to_string()), search, custom: TextEdit::new(""), error: None });
+        self.tree_menu = None;
+        self.vault_menu = false;
+        self.renaming = None;
         tx.focus("folder-icon-search", false);
     }
 
@@ -260,6 +283,10 @@ impl App {
     /// character of the folder name on disk, so this renames the folder.
     pub fn apply_folder_icon(&mut self, icon: Option<&str>, tx: &mut Tx) {
         let Some(picker) = &self.folder_icon else { return };
+        if let Some(note) = picker.note.clone() {
+            self.apply_note_icon(&note, icon, tx);
+            return;
+        }
         let folder = picker.folder.clone();
         let segment = md::folder_segment(&folder);
         let name = md::name_without_icon(segment);
@@ -284,6 +311,39 @@ impl App {
             return;
         }
         self.folder_icon = None;
+        self.focus_editor(tx);
+    }
+
+    /// Gives the note at `path` the picker's `icon`, or removes it with `None`, by renaming the
+    /// note. Links by the name without an icon keep working, so only links that spell out the
+    /// old icon change.
+    fn apply_note_icon(&mut self, path: &str, icon: Option<&str>, tx: &mut Tx) {
+        let base = md::base(path);
+        let name = md::name_without_icon(base);
+        if name.is_empty() {
+            if let Some(p) = &mut self.folder_icon {
+                p.error = Some("The note needs a name besides its icon.".into());
+            }
+            return;
+        }
+        if md::name_icon(base) == icon {
+            self.close_folder_icon(tx);
+            return;
+        }
+        let new_base = match icon {
+            Some(i) => format!("{i} {name}"),
+            None => name.to_string(),
+        };
+        let to = md::join(md::dir(path), &format!("{new_base}.md"));
+        if self.files().contains_key(&to) {
+            if let Some(p) = &mut self.folder_icon {
+                p.error = Some(format!("A note named “{new_base}” is already here."));
+            }
+            return;
+        }
+        self.folder_icon = None;
+        let update = base != name && self.settings().update_links;
+        self.rename_note(path, &new_base, update);
         self.focus_editor(tx);
     }
 
@@ -606,6 +666,63 @@ mod tests {
         assert_eq!(s.active.as_deref(), Some("Areas/Areas.md"));
         assert!(s.files().contains_key("Areas/Areas.md"));
         assert_eq!(s.folder_note("Projects").as_deref(), Some("Projects/Projects.md"));
+        drop(s);
+        unsafe {
+            for (k, v) in old {
+                match v {
+                    Some(v) => std::env::set_var(k, v),
+                    None => std::env::remove_var(k),
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_note_icon_renames_the_note_and_keeps_links() {
+        let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
+        let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
+        let dir = std::env::temp_dir().join(format!("quire-note-icon-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        std::fs::create_dir_all(vault.join("🎉 Party")).unwrap();
+        std::fs::write(vault.join("Wiki.md"), "# Wiki\n").unwrap();
+        std::fs::write(vault.join("🎉 Party/Party.md"), "# Party\n").unwrap();
+        std::fs::write(vault.join("Root.md"), "[[Wiki]]\n").unwrap();
+        // SAFETY: ENV keeps these variables to this test.
+        unsafe {
+            std::env::set_var("HOME", dir.join("home"));
+            std::env::set_var("XDG_CONFIG_HOME", dir.join("cfg"));
+            std::env::set_var("XDG_DATA_HOME", dir.join("data"));
+        }
+        let mut s = crate::app::init();
+        s.load_vault(&vault).unwrap();
+        let mut tx = Tx::default();
+        s.open_link("Wiki", &mut tx);
+
+        s.start_note_icon("Wiki.md", &mut tx);
+        s.apply_folder_icon(Some("🧭"), &mut tx);
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join("🧭 Wiki.md").is_file(), "the note was renamed");
+        assert!(!vault.join("Wiki.md").exists());
+        assert_eq!(s.active.as_deref(), Some("🧭 Wiki.md"));
+        assert_eq!(s.files()["Root.md"], "[[Wiki]]\n", "a link by name stays as it is");
+        assert_eq!(s.names.resolve("Wiki"), Some("🧭 Wiki.md"), "and still reaches the note");
+
+        s.start_note_icon("🧭 Wiki.md", &mut tx);
+        s.apply_folder_icon(Some("📚"), &mut tx);
+        s.start_note_icon("📚 Wiki.md", &mut tx);
+        s.apply_folder_icon(None, &mut tx);
+        s.writer.wait(std::time::Duration::from_secs(5));
+        assert!(vault.join("Wiki.md").is_file(), "the icon came off again");
+        assert_eq!(s.active.as_deref(), Some("Wiki.md"));
+
+        // A folder note shows its folder's icon, so its sticker changes the folder's.
+        s.start_note_icon("🎉 Party/Party.md", &mut tx);
+        assert!(s.folder_icon.as_ref().is_some_and(|p| p.note.is_none() && p.folder == "🎉 Party"));
+        s.close_folder_icon(&mut tx);
+
         drop(s);
         unsafe {
             for (k, v) in old {

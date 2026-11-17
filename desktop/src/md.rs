@@ -57,6 +57,12 @@ pub fn folder_icon(folder: &str) -> Option<&str> {
     name_icon(folder_segment(folder))
 }
 
+/// A note's page icon: the emoji its file name starts with, or for a folder note without one,
+/// the folder's icon.
+pub fn note_icon(path: &str) -> Option<&str> {
+    name_icon(base(path)).or_else(|| if is_folder_note(path) { folder_icon(dir(path)) } else { None })
+}
+
 /// The last part of a folder path, without its icon.
 pub fn folder_name(folder: &str) -> &str {
     name_without_icon(folder_segment(folder))
@@ -132,6 +138,15 @@ impl Names {
         for p in files.keys() {
             m.entry(base(p).to_lowercase()).or_insert_with(|| p.clone());
             m.insert(strip_md(p).to_lowercase(), p.clone());
+        }
+        // A note with an icon answers to its name without it too, so [[Life Wiki]] opens
+        // `🧭 Life Wiki.md`. A note named exactly that wins.
+        for p in files.keys() {
+            let b = base(p);
+            let bare = name_without_icon(b);
+            if bare != b && !bare.is_empty() {
+                m.entry(bare.to_lowercase()).or_insert_with(|| p.clone());
+            }
         }
         // A folder's note owns its name, so [[Projects]] opens Projects/Projects.md even
         // when another note is also called Projects. The shallowest folder note keeps it.
@@ -1162,6 +1177,17 @@ mod tests {
         assert!(is_folder_note_in("🎉 Party/Party.md", "🎉 Party"));
         assert!(is_folder_note_in("🎉 Party/🎉 Party.md", "🎉 Party"));
         assert_eq!(folder_for_link(&["Archive".into(), "🎉 Party".into()], "Party"), Some("🎉 Party".into()));
+    }
+
+    #[test]
+    fn a_note_icon_comes_from_its_name_or_its_folder() {
+        assert_eq!(note_icon("🧭 Life Wiki.md"), Some("🧭"));
+        assert_eq!(note_icon("Docs/🏃 Workout.md"), Some("🏃"));
+        assert_eq!(note_icon("Life Wiki.md"), None);
+        assert_eq!(note_icon("🎉 Party/Party.md"), Some("🎉"));
+        assert_eq!(note_icon("🎉 Party/🥳 Party.md"), Some("🥳"));
+        assert_eq!(note_icon("🎉 Party/Guests.md"), None);
+        assert_eq!(note_icon("Party/Party.md"), None);
     }
 
     #[test]

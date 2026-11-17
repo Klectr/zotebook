@@ -57,9 +57,18 @@ pub fn dialog(v: V) -> El {
     let p = v.p;
     let Some(picker) = &v.s.folder_icon else { return el() };
     let folder = picker.folder.clone();
-    let display = md::folder_name(&folder);
-    let display = if display.is_empty() { folder.clone() } else { display.to_string() };
-    let current = md::folder_icon(&folder);
+    let note = picker.note.clone();
+    let (display, current, title) = match &note {
+        Some(n) => {
+            let base = md::base(n);
+            let name = md::name_without_icon(base);
+            (if name.is_empty() { base.to_string() } else { name.to_string() }, md::name_icon(base), "Note icon")
+        }
+        None => {
+            let name = md::folder_name(&folder);
+            (if name.is_empty() { folder.clone() } else { name.to_string() }, md::folder_icon(&folder), "Folder icon")
+        }
+    };
     let results = emoji::search(&picker.search.text);
     let error = picker.error.clone();
 
@@ -79,7 +88,7 @@ pub fn dialog(v: V) -> El {
             .gap(3.0)
             .grow(1.0)
             .min_w(0.0)
-            .child(label("Folder icon", sans(16.0, 600.0), p.ink))
+            .child(label(title, sans(16.0, 600.0), p.ink))
             .child(label(format!("Choose an emoji for “{display}”."), sans(12.5, 400.0).lh(12.5 * 1.45), p.mute).wrap()),
     );
 
@@ -133,7 +142,7 @@ pub fn dialog(v: V) -> El {
         .box_shadow(theme::settings_shadows()[0])
         .box_shadow(theme::settings_shadows()[1])
         .role("dialog")
-        .label("Folder icon")
+        .label(title)
         .modal_tx(true, |s: &mut App, tx| s.close_folder_icon(tx))
         .child(head)
         .child(search)
@@ -152,7 +161,7 @@ pub fn dialog(v: V) -> El {
     }
     let mut foot = row().key("folder-icon-foot").w_full().gap(8.0).center_y();
     if current.is_some() && !display.is_empty() {
-        foot = foot.child(outline_button(p, "folder-icon-reset", "Use default icon", 32.0, |s, tx| s.apply_folder_icon(None, tx)));
+        foot = foot.child(outline_button(p, "folder-icon-reset", if note.is_some() { "Remove icon" } else { "Use default icon" }, 32.0, |s, tx| s.apply_folder_icon(None, tx)));
     }
     panel = panel.child(
         foot.child(el().grow(1.0))
