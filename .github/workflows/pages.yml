@@ -42,8 +42,8 @@ jobs:
           SITE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           sed -i \
-            -e "s#https://github.com/OWNER/quire#${REPO_URL}#g" \
-            -e "s#https://OWNER.github.io/quire#${SITE_URL}#g" \
+            -e "s#https://github.com/OWNER/zotebook#${REPO_URL}#g" \
+            -e "s#https://OWNER.github.io/zotebook#${SITE_URL}#g" \
             site/index.html
           grep -n "OWNER" site/index.html && echo "A placeholder is still in site/index.html." || true
 

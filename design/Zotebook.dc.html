@@ -35,7 +35,7 @@ input::placeholder,textarea::placeholder{color:#9a9184}
   <div style="flex:1; min-height:0; overflow-y:auto; display:flex; padding:24px 24px 72px">
     <div style="margin:auto; width:100%; max-width:440px; display:flex; flex-direction:column; gap:40px">
       <div style="display:flex; flex-direction:column; gap:12px">
-        <div style="font-family:'Newsreader', Georgia, serif; font-size:60px; line-height:1; letter-spacing:-0.02em; color:var(--q-ink,#2a2723)">Quire</div>
+        <div style="font-family:'Newsreader', Georgia, serif; font-size:60px; line-height:1; letter-spacing:-0.02em; color:var(--q-ink,#2a2723)">Zotebook</div>
         <div style="font-family:'IBM Plex Mono', monospace; font-size:12.5px; line-height:1.6; color:var(--q-mute,#776f64)">A plain editor for folders of Markdown files.</div>
       </div>
       <sc-if value="{{ notCreating }}" hint-placeholder-val="{{ true }}">
@@ -420,7 +420,7 @@ input::placeholder,textarea::placeholder{color:#9a9184}
             </div>
             <sc-if value="{{ mcpOn }}">
               <div style="display:flex; align-items:center; gap:24px; padding:16px 0; border-top:1px solid var(--q-line,#e1dbcf)">
-                <div style="flex:1; min-width:0"><div style="font-size:14px; font-weight:500">Transport</div><div style="margin-top:3px; font-size:12.5px; line-height:1.45; color:var(--q-mute,#776f64)">With stdio, the AI app starts Quire's helper itself. HTTP serves a local endpoint on this computer.</div></div>
+                <div style="flex:1; min-width:0"><div style="font-size:14px; font-weight:500">Transport</div><div style="margin-top:3px; font-size:12.5px; line-height:1.45; color:var(--q-mute,#776f64)">With stdio, the AI app starts Zotebook's helper itself. HTTP serves a local endpoint on this computer.</div></div>
                 <div style="display:flex; gap:2px; padding:2px; border-radius:8px; background:var(--q-side,#efebe3)"><sc-for list="{{ mcpTransportOpts }}" as="o"><button onClick="{{ o.onClick }}" style="height:26px; padding:0 12px; border:0; border-radius:6px; font-family:'IBM Plex Mono', monospace; font-size:12px; white-space:nowrap; cursor:default; background:{{ o.bg }}; color:{{ o.color }}; box-shadow:{{ o.shadow }}">{{ o.label }}</button></sc-for></div>
               </div>
               <sc-if value="{{ mcpHttp }}">
@@ -461,7 +461,7 @@ input::placeholder,textarea::placeholder{color:#9a9184}
               </div>
               <sc-if value="{{ mcpWrite }}">
                 <div style="display:flex; align-items:center; gap:24px; padding:16px 0; border-top:1px solid var(--q-line,#e1dbcf)">
-                  <div style="flex:1; min-width:0"><div style="font-size:14px; font-weight:500">Ask before changes</div><div style="margin-top:3px; font-size:12.5px; line-height:1.45; color:var(--q-mute,#776f64)">Quire shows the change and waits for you to approve it.</div></div>
+                  <div style="flex:1; min-width:0"><div style="font-size:14px; font-weight:500">Ask before changes</div><div style="margin-top:3px; font-size:12.5px; line-height:1.45; color:var(--q-mute,#776f64)">Zotebook shows the change and waits for you to approve it.</div></div>
                   <button onClick="{{ mcpConfirmToggle }}" style="width:36px; height:20px; flex:none; display:flex; align-items:center; justify-content:{{ mcpConfirmJustify }}; padding:2px; border:0; border-radius:10px; background:{{ mcpConfirmBg }}; cursor:default; transition:background .15s"><span style="width:16px; height:16px; border-radius:50%; background:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></button>
                 </div>
               </sc-if>
@@ -505,9 +505,9 @@ class Component extends DCLogic {
 
   sampleVault() {
     const k = (...a) => this.k(...a), mc = this.modClick(), F = {};
-    F['Welcome.md'] = `# Welcome to Quire
+    F['Welcome.md'] = `# Welcome to Zotebook
 
-Quire edits a folder of plain Markdown files. Each note is a \`.md\` file on your disk, so any other app can open it, and it will still open in twenty years.
+Zotebook edits a folder of plain Markdown files. Each note is a \`.md\` file on your disk, so any other app can open it, and it will still open in twenty years.
 
 ## The basics
 
@@ -621,7 +621,7 @@ See also [[About this folder]].
 `;
     F['Docs/About this folder.md'] = `# About this folder
 
-Everything here is plain Markdown. Nothing depends on Quire.
+Everything here is plain Markdown. Nothing depends on Zotebook.
 
 ## Layout
 
@@ -693,7 +693,7 @@ Ideas for later live in [[Ideas]].
       reveal: {}, syncStatus: { state: 'idle' }, syncBusy: false, mcpCopied: false
     };
     try {
-      const saved = JSON.parse(localStorage.getItem('quire-proto-v1') || 'null');
+      const saved = JSON.parse(localStorage.getItem('zotebook-proto-v1') || 'null');
       if (saved && saved.vaults) {
         ['vaults', 'vaultId', 'tabs', 'active', 'recent', 'expanded', 'mode', 'leftOpen', 'rightOpen'].forEach(key => { if (saved[key] !== undefined) base[key] = saved[key]; });
         base.settings = Object.assign({}, base.settings, saved.settings || {});
@@ -759,7 +759,7 @@ Ideas for later live in [[Ideas]].
   }
   save() {
     clearTimeout(this._saveT);
-    this._saveT = setTimeout(() => { const s = this.state; try { localStorage.setItem('quire-proto-v1', JSON.stringify({ vaults: s.vaults, vaultId: s.vaultId, tabs: s.tabs, active: s.active, recent: s.recent, expanded: s.expanded, mode: s.mode, leftOpen: s.leftOpen, rightOpen: s.rightOpen, settings: s.settings })); } catch (e) {} }, 300);
+    this._saveT = setTimeout(() => { const s = this.state; try { localStorage.setItem('zotebook-proto-v1', JSON.stringify({ vaults: s.vaults, vaultId: s.vaultId, tabs: s.tabs, active: s.active, recent: s.recent, expanded: s.expanded, mode: s.mode, leftOpen: s.leftOpen, rightOpen: s.rightOpen, settings: s.settings })); } catch (e) {} }, 300);
   }
 
   base(p) { return p.slice(p.lastIndexOf('/') + 1).replace(/\.md$/i, ''); }
@@ -1000,7 +1000,7 @@ Ideas for later live in [[Ideas]].
     const P = this.providerDefs().find(p => p.id === pid); if (!P || pid === 'none') return [];
     const out = [], f = (key, label, o) => out.push({ key, label, req: true, ...(o || {}) });
     const val = (k, d) => cfg[k] != null && cfg[k] !== '' ? cfg[k] : d;
-    const prefix = () => f('prefix', 'Remote folder', { req: false, def: 'quire/' + this.vault().name + '/', hint: 'inside the bucket' });
+    const prefix = () => f('prefix', 'Remote folder', { req: false, def: 'zotebook/' + this.vault().name + '/', hint: 'inside the bucket' });
     if (pid === 'azure') {
       f('account', 'Storage account', { ph: 'mynotesstorage' }); f('container', 'Container', { ph: 'notes' });
       f('azAuth', 'Sign in with', { type: 'choice', wide: true, req: false, def: 'key', opts: [{ v: 'key', label: 'account key' }, { v: 'sas', label: 'SAS token' }] });
@@ -1303,7 +1303,7 @@ Ideas for later live in [[Ideas]].
     const mcpToolRows = toolDefs.map(([id, desc, w]) => { const avail = !(w && ro), on = avail && !!mtools[id]; return { name: id, desc, isWrite: w, on, op: avail ? 1 : 0.45, boxBg: on ? '#7d52bd' : 'transparent', boxBorder: on ? '#7d52bd' : C.mark, onClick: () => { if (avail) this.setMcp({ tools: { ...mtools, [id]: !mtools[id] } }); } }; });
     const nTools = mcpToolRows.filter(t => t.on).length, hidden = mcp.hidden || [];
     const mcpUrl = `http://127.0.0.1:${mcp.port || '3917'}/mcp`;
-    const mcpConfig = JSON.stringify({ mcpServers: { quire: http ? { url: mcpUrl, headers: { Authorization: 'Bearer ' + (mcp.token || '') } } : { command: 'quire', args: ['mcp', '--folder', vault.path] } } }, null, 2);
+    const mcpConfig = JSON.stringify({ mcpServers: { zotebook: http ? { url: mcpUrl, headers: { Authorization: 'Bearer ' + (mcp.token || '') } } : { command: 'zotebook', args: ['mcp', '--folder', vault.path] } } }, null, 2);
     return {
       secMcp: s.setSec === 'mcp', mcpOn: !!mcp.enabled, mcpToggle: () => this.setMcp({ enabled: !mcp.enabled }), mcpBg: mcp.enabled ? '#7d52bd' : C.mark, mcpJustify: mcp.enabled ? 'flex-end' : 'flex-start',
       mcpTransportOpts: [['stdio', 'stdio'], ['http', 'HTTP']].map(([v, label]) => ({ label, onClick: () => this.setMcp({ transport: v }), ...segBtn((mcp.transport || 'stdio') === v) })),

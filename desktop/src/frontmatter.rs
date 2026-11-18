@@ -9,7 +9,7 @@
 //! # Garden plan
 //! ```
 //!
-//! Quire reads the top-level keys and keeps the block out of the preview. It reads a small part
+//! Zotebook reads the top-level keys and keeps the block out of the preview. It reads a small part
 //! of YAML: plain, quoted and empty values, lists as `[a, b]` or as `- a` lines, and indented
 //! lines under a key, which stay as text. The block counts as front matter only when it closes
 //! with `---` or `...` and each top-level line is a key, a comment or blank, so a note that

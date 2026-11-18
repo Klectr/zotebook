@@ -18,7 +18,7 @@ impl<T: Send + 'static> Job<T> {
     pub(crate) fn spawn(waker: Option<rune::Waker>, f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Job<T> {
         let slot: Arc<Mutex<Option<Result<T, String>>>> = Arc::default();
         let s2 = slot.clone();
-        let _ = std::thread::Builder::new().name("quire-sync".into()).spawn(move || {
+        let _ = std::thread::Builder::new().name("zotebook-sync".into()).spawn(move || {
             let r = f();
             if let Ok(mut g) = s2.lock() {
                 *g = Some(r);
@@ -81,19 +81,18 @@ impl App {
     /// The remote for the open folder, from the settings.
     pub fn remote(&self) -> Option<Remote> {
         let sy = &self.settings().sync;
-        if sy.provider == "none" {
-            return None;
+        match &self.vault {
+            Some(v) => super::remote_for(sy, &v.path, &v.name),
+            None => super::remote_for(sy, std::path::Path::new(""), "notes"),
         }
-        let cfg = sy.cfg.get(&sy.provider).cloned().unwrap_or_default();
-        let prefix = self.remote_folder();
-        Some(Remote { provider: sy.provider.clone(), cfg, prefix: super::clean_prefix(&prefix), encrypt: sy.encrypt, pass: sy.pass.clone() })
     }
 
     /// The remote folder of the open notes folder, as the settings show it.
     pub fn remote_folder(&self) -> String {
-        let Some(v) = &self.vault else { return "quire/notes/".into() };
-        let key = v.path.to_string_lossy().into_owned();
-        self.settings().sync.folders.get(&key).filter(|p| !p.trim().is_empty()).cloned().unwrap_or_else(|| format!("quire/{}/", v.name))
+        match &self.vault {
+            Some(v) => super::folder_prefix(&self.settings().sync, &v.path, &v.name),
+            None => format!("{}/notes/", super::DEFAULT_ROOT),
+        }
     }
 
     /// Sync is set up and its test passed.
@@ -393,7 +392,7 @@ impl App {
         }
         if !conflicts.is_empty() {
             self.notice = Some(format!(
-                "{} changed on two devices. Quire kept both versions: {}.",
+                "{} changed on two devices. Zotebook kept both versions: {}.",
                 if conflicts.len() == 1 { "A note" } else { "Some notes" },
                 conflicts.join(", ")
             ));

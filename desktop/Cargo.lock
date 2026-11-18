@@ -2702,25 +2702,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quire"
-version = "0.5.6"
-dependencies = [
- "aes-gcm",
- "base64",
- "embed-resource",
- "getrandom 0.2.17",
- "hmac",
- "pbkdf2",
- "rsa",
- "rune",
- "serde",
- "serde_json",
- "sha2",
- "unicode-segmentation",
- "ureq",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4945,6 +4926,25 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zotebook"
+version = "0.5.6"
+dependencies = [
+ "aes-gcm",
+ "base64",
+ "embed-resource",
+ "getrandom 0.2.17",
+ "hmac",
+ "pbkdf2",
+ "rsa",
+ "rune",
+ "serde",
+ "serde_json",
+ "sha2",
+ "unicode-segmentation",
+ "ureq",
+]
 
 [[package]]
 name = "zruntime"

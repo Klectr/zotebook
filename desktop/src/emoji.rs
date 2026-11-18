@@ -1,7 +1,7 @@
 //! Emoji in folder names, and the catalog the icon picker shows.
 //!
 //! A folder's icon is an emoji at the start of its name. The icon therefore lives in the folder
-//! name on disk, and Quire shows the rest of the name as the folder's label.
+//! name on disk, and Zotebook shows the rest of the name as the folder's label.
 
 use unicode_segmentation::UnicodeSegmentation;
 

@@ -644,7 +644,7 @@ mod tests {
         let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
         let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
         let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
-        let dir = std::env::temp_dir().join(format!("quire-folder-note-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zotebook-folder-note-{}", std::process::id()));
         let vault = dir.join("vault");
         std::fs::create_dir_all(vault.join("Projects")).unwrap();
         std::fs::create_dir_all(vault.join("Areas")).unwrap();
@@ -698,7 +698,7 @@ mod tests {
         let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
         let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
         let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
-        let dir = std::env::temp_dir().join(format!("quire-note-icon-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zotebook-note-icon-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let vault = dir.join("vault");
         std::fs::create_dir_all(vault.join("🎉 Party")).unwrap();
@@ -755,7 +755,7 @@ mod tests {
         let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
         let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
         let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
-        let dir = std::env::temp_dir().join(format!("quire-folder-icon-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zotebook-folder-icon-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let vault = dir.join("vault");
         std::fs::create_dir_all(vault.join("Party")).unwrap();
@@ -810,7 +810,7 @@ mod tests {
         let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
         let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
         let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
-        let dir = std::env::temp_dir().join(format!("quire-journal-icon-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zotebook-journal-icon-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let vault = dir.join("vault");
         std::fs::create_dir_all(vault.join("Journal")).unwrap();

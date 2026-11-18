@@ -1,4 +1,4 @@
-//! What Quire keeps between runs: settings, known folders and each folder's open tabs.
+//! What Zotebook keeps between runs: settings, known folders and each folder's open tabs.
 //! It lives in the user's config folder as `state.json`, never inside a notes folder.
 
 use std::collections::BTreeMap;
@@ -78,7 +78,7 @@ pub struct Sync {
     /// When the last sync finished, in milliseconds since 1970.
     pub last_sync: Option<i64>,
     /// The remote folder of each notes folder, by its path. A notes folder without one uses
-    /// `quire/<folder name>/`, so two notes folders never share a remote folder by accident.
+    /// `zotebook/<folder name>/`, so two notes folders never share a remote folder by accident.
     pub folders: BTreeMap<String, String>,
 }
 
@@ -181,7 +181,7 @@ pub struct Session {
 #[serde(default)]
 pub struct Persist {
     pub vaults: Vec<VaultRef>,
-    /// The folder open when Quire quit. None opens the welcome screen.
+    /// The folder open when Zotebook quit. None opens the welcome screen.
     pub last: Option<PathBuf>,
     pub sessions: BTreeMap<String, Session>,
     pub mode: String,
@@ -213,11 +213,11 @@ impl Default for Persist {
 }
 
 pub fn dirs() -> Option<rune::dirs::AppDirs> {
-    rune::dirs::AppDirs::new("quire")
+    rune::dirs::AppDirs::new("zotebook")
 }
 
 fn state_path() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("QUIRE_STATE") {
+    if let Ok(p) = std::env::var("ZOTEBOOK_STATE") {
         return Some(PathBuf::from(p));
     }
     dirs().map(|d| d.config().join("state.json"))
@@ -231,6 +231,10 @@ pub fn load() -> Persist {
 /// Writes the state file atomically, readable only by the user (it can hold sync keys).
 pub fn save(p: &Persist) -> std::io::Result<()> {
     let Some(path) = state_path() else { return Ok(()) };
+    save_at(&path, p)
+}
+
+pub fn save_at(path: &std::path::Path, p: &Persist) -> std::io::Result<()> {
     if let Some(d) = path.parent() {
         std::fs::create_dir_all(d)?;
     }
@@ -241,7 +245,7 @@ pub fn save(p: &Persist) -> std::io::Result<()> {
         use std::os::unix::fs::PermissionsExt;
         let _ = std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600));
     }
-    std::fs::rename(&tmp, &path)
+    std::fs::rename(&tmp, path)
 }
 
 /// `~/Documents`, or the XDG documents folder on Linux.

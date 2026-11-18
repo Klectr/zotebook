@@ -1,8 +1,12 @@
-# Quire sync format
+# Zotebook sync format
 
-Quire keeps a notes folder the same on every device through an object store that you own. The
+Zotebook keeps a notes folder the same on every device through an object store that you own. The
 desktop app uses the format in this file. Another app that follows it can
 read and write the same notes.
+
+Zotebook was called Quire. The names inside the format kept the old name, so notes from either
+app open in the other: the `.quire/` folder, the `QUIRE1` blob header, the `quire` passphrase
+check and the `%QUIRE-LOCKED-NOTE` line.
 
 The reference code is in `desktop/src/sync/`. The tests in `desktop/src/sync/tests.rs` run two
 devices against one bucket.
@@ -13,24 +17,24 @@ GitHub sync is different. It is available in the desktop app only, and only when
 is the root of a Git repository with a remote configured. It does not use the object-store format
 in the rest of this file.
 
-For each sync, Quire stages every change, commits it with `Quire: notes from <device>`, rebases
+For each sync, Zotebook stages every change, commits it with `Zotebook: notes from <device>`, rebases
 the current branch onto the remote branch, and pushes. Git authenticates through the credentials
 already configured on the computer: the SSH agent, a credential helper, or the remote URL. The
-current branch is used; Quire does not switch branches.
+current branch is used; Zotebook does not switch branches.
 
 Pins stay in `state.json` and do not sync with this provider. The **Encrypt before upload** option
 does not apply: locked notes remain encrypted files, and other notes are committed as plain text,
-so use a private repository if that matters. Quire adds `.trash/` to the repository's local
+so use a private repository if that matters. Zotebook adds `.trash/` to the repository's local
 `.git/info/exclude`, so its trash does not enter the history.
 
-When both the local and remote branches changed the same lines, Git reports a conflict. Quire
+When both the local and remote branches changed the same lines, Git reports a conflict. Zotebook
 aborts the rebase, keeps the local commit, and stops. Resolve the conflict with Git, then sync
 again.
 
 ## Remote folder
 
 All objects of one notes folder sit under one key prefix. The default prefix is
-`quire/<folder name>/`. You can change it in the **Remote folder** field. The prefix always ends
+`zotebook/<folder name>/`. You can change it in the **Remote folder** field. The prefix always ends
 in `/`, unless it is empty.
 
 Each notes folder on a device has its own prefix. Two notes folders with one prefix merge their
@@ -121,7 +125,7 @@ both sides had. Its JSON form is:
 `pins` lists the pins after the last sync. A base without `pins` comes from before pins synced.
 `stamps` is optional. It holds the size, the file time in nanoseconds and the hash of each
 image, so an image that did not change is not read again. The desktop app keeps the base in
-`sync/` in its config folder, which is `~/.config/quire/sync/` on Linux. The base never goes to
+`sync/` in its config folder, which is `~/.config/zotebook/sync/` on Linux. The base never goes to
 the store.
 
 For each path in the local folder, the manifest or the base, compare the local hash `L`, the
@@ -266,13 +270,13 @@ A note can have its own password, apart from the sync passphrase. A locked note 
 ```text
 %QUIRE-LOCKED-NOTE v1 pbkdf2-sha256 <iterations> <salt, standard base64>
 
-This note is locked with a password. Open it in Quire to read it.
+This note is locked with a password. Open it in Zotebook to read it.
 
 <the sealed text, standard base64, in lines of 76 characters>
 ```
 
 1. Derive 64 bytes with PBKDF2-HMAC-SHA256 from the password as UTF-8, the salt and the
-   iteration count in the first line. Quire uses 16 random bytes of salt and 600000 iterations.
+   iteration count in the first line. Zotebook uses 16 random bytes of salt and 600000 iterations.
 2. Use bytes 0 to 31 as the AES-256-GCM key.
 3. The sealed text is a sealed blob, as in "Encryption": `QUIRE1`, a 12-byte nonce, then the
    ciphertext of the note text as UTF-8 with its tag.
@@ -307,7 +311,7 @@ comes from `cargo test print_locked_note -- --nocapture`:
 ```text
 %QUIRE-LOCKED-NOTE v1 pbkdf2-sha256 1000 MDEyMzQ1Njc4OWFiY2RlZg==
 
-This note is locked with a password. Open it in Quire to read it.
+This note is locked with a password. Open it in Zotebook to read it.
 
 UVVJUkUxuYsECSutmGY8MVrT44GXP+mqVNaRrkyLtnVcXqlJUQ/+AdtwaCyZUuSDFLdqVw==
 ```

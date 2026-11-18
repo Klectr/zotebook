@@ -1,13 +1,13 @@
-# Quire website
+# Zotebook website
 
-This folder is the promotional site for Quire. It is plain HTML, CSS and JavaScript with no build step. GitHub Pages serves it as it is.
+This folder is the promotional site for Zotebook. It is plain HTML, CSS and JavaScript with no build step. GitHub Pages serves it as it is.
 
 ## Files
 
 | Path | Content |
 | --- | --- |
 | `index.html` | The page. |
-| `styles.css` | All styles. Colours and type follow `design/Quire.dc.html`. |
+| `styles.css` | All styles. Colours and type follow `design/Zotebook.dc.html`. |
 | `site.js` | Repository links, the theme switch, the screenshot switches and the copy button. |
 | `favicon.svg` | The app icon. It is `icon-paper.svg` in a light theme and `icon-ink.svg` in a dark theme. A media query inside the SVG switches them. |
 | `favicon-32.png` | A 32 x 32 PNG of `icon-paper.svg`, for browsers without SVG icons. |
@@ -31,19 +31,19 @@ Then open <http://localhost:8000>. You can also open `site/index.html` directly 
 The repository URL is in one place: the `data-repo` attribute on the `<html>` element in `index.html`.
 
 ```html
-<html lang="en" data-repo="https://github.com/tristonarmstrong/quire">
+<html lang="en" data-repo="https://github.com/Klectr/zotebook">
 ```
 
-The page points to `https://github.com/tristonarmstrong/quire`. To move it, change that value. `site.js` builds every source, release and issue link from this value. The download buttons point to `<repo>/releases/latest`.
+The page points to `https://github.com/Klectr/zotebook`. To move it, change that value. `site.js` builds every source, release and issue link from this value. The download buttons point to `<repo>/releases/latest`.
 
-Social previews need absolute URLs, and a script cannot set them for crawlers. The `canonical`, `og:url`, `og:image` and `twitter:image` tags use the placeholder site URL `https://OWNER.github.io/quire/`.
+Social previews need absolute URLs, and a script cannot set them for crawlers. The `canonical`, `og:url`, `og:image` and `twitter:image` tags use the placeholder site URL `https://OWNER.github.io/zotebook/`.
 
 The Pages workflow replaces both placeholders at deploy time. If you deploy another way, replace them yourself. This example uses `you` as the account name:
 
 ```sh
 sed -i \
-  -e 's#https://github.com/OWNER/quire#https://github.com/you/quire#g' \
-  -e 's#https://OWNER.github.io/quire#https://you.github.io/quire#g' \
+  -e 's#https://github.com/OWNER/zotebook#https://github.com/you/zotebook#g' \
+  -e 's#https://OWNER.github.io/zotebook#https://you.github.io/zotebook#g' \
   site/index.html
 ```
 
@@ -96,9 +96,9 @@ Keep the desktop screenshots at 1280 x 800. If you use another size, keep the 16
 | `assets/settings-sync-2.png` | **Settings > Sync & backup**, lower part: the access keys, the endpoint, When to sync, Encrypt before upload, Test connection, Sync now and the status "Connected. Last synced 2m ago." Light theme. The "options" view of the sync section uses it. | A headless render of the desktop app at `--scale 2`, resized to 1280x800. |
 | `assets/welcome.png` | The welcome screen with the lockup, **Create a new folder** and **Open a folder**. Light theme. | A headless render of the desktop app at `--scale 2`, resized to 1280x800. |
 | `assets/og.png` | The social image, 1200 x 630. It shows the lockup, the tagline and `editor-light.png`, like the hero. | Made with Chromium and ImageMagick. See below. |
-| `assets/quire.mp4` | The promo video, 38 seconds at 2560x1600 and 60 fps, with burnt-in captions. The "See it work" section and the root README use it. | Recorded with `quire --script promo.json --video raw.mp4 --fps 60 --pointer --size 1280x800 --scale 2`, then captioned with `ffmpeg drawtext`. |
-| `assets/quire.gif` | The same video at 960x600 and 12 fps, for the root README. | Made from `quire.mp4` with `palettegen` and `paletteuse`. |
-| `assets/quire-poster.png` | The poster frame of the video: the new note in preview, with its image. | A frame of the raw recording at 15.8 seconds, resized to 1280x800. |
+| `assets/zotebook.mp4` | The promo video, 38 seconds at 2560x1600 and 60 fps, with burnt-in captions. The "See it work" section and the root README use it. | Recorded with `zotebook --script promo.json --video raw.mp4 --fps 60 --pointer --size 1280x800 --scale 2`, then captioned with `ffmpeg drawtext`. |
+| `assets/zotebook.gif` | The same video at 960x600 and 12 fps, for the root README. | Made from `zotebook.mp4` with `palettegen` and `paletteuse`. |
+| `assets/zotebook-poster.png` | The poster frame of the video: the new note in preview, with its image. | A frame of the raw recording at 15.8 seconds, resized to 1280x800. |
 
 Some figures zoom into one part of their screenshot, so the text stays readable. Each zoom is set in the `style` attribute of the image in `index.html`:
 
@@ -139,7 +139,7 @@ cat > "$T/og.html" <<EOF
   .shot img { display: block; width: 100%; }
 </style>
 <div class="desk"></div>
-<div class="lockup"><svg viewBox="0 0 100 100"><rect x="38" y="10" width="46" height="60" rx="6" fill="#e1dbcf"/><rect x="27" y="20" width="46" height="60" rx="6" fill="#c9bfae"/><rect x="16" y="30" width="46" height="60" rx="6" fill="#7a4fba"/></svg>quire</div>
+<div class="lockup"><svg viewBox="0 0 100 100"><rect x="38" y="10" width="46" height="60" rx="6" fill="#e1dbcf"/><rect x="27" y="20" width="46" height="60" rx="6" fill="#c9bfae"/><rect x="16" y="30" width="46" height="60" rx="6" fill="#7a4fba"/></svg>zotebook</div>
 <div class="tagline">A plain editor for folders of Markdown files.</div>
 <div class="shot"><img src="$R/site/assets/editor-light.png"></div>
 EOF

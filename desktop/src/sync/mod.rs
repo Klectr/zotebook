@@ -40,7 +40,7 @@ impl Remote {
     }
 
     /// A stable id for this folder on this store, for the last-sync record.
-    fn id(&self, root: &Path) -> String {
+    pub(crate) fn id(&self, root: &Path) -> String {
         let key = format!("{}|{}|{}|{}|{}", root.display(), self.provider, self.val("bucket", ""), self.val("container", ""), self.prefix);
         sign::sha256_hex(key.as_bytes())[..20].to_string()
     }
@@ -55,6 +55,24 @@ fn default_region(pid: &str) -> &'static str {
 pub fn clean_prefix(p: &str) -> String {
     let t = p.trim().trim_matches('/');
     if t.is_empty() { String::new() } else { format!("{t}/") }
+}
+
+/// The folder in the bucket that holds a notes folder when the settings name none.
+pub const DEFAULT_ROOT: &str = "zotebook";
+
+/// The remote folder of a notes folder: the one set in the settings, or
+/// `zotebook/<folder name>/`.
+pub fn folder_prefix(sy: &crate::store::Sync, path: &Path, name: &str) -> String {
+    sy.folders.get(&*path.to_string_lossy()).filter(|p| !p.trim().is_empty()).cloned().unwrap_or_else(|| format!("{DEFAULT_ROOT}/{name}/"))
+}
+
+/// The remote of a notes folder, from the sync settings. None while sync is off.
+pub fn remote_for(sy: &crate::store::Sync, path: &Path, name: &str) -> Option<Remote> {
+    if sy.provider == "none" {
+        return None;
+    }
+    let cfg = sy.cfg.get(&sy.provider).cloned().unwrap_or_default();
+    Some(Remote { provider: sy.provider.clone(), cfg, prefix: clean_prefix(&folder_prefix(sy, path, name)), encrypt: sy.encrypt, pass: sy.pass.clone() })
 }
 
 pub fn open_store(r: &Remote) -> Result<Box<dyn Store>, String> {
@@ -112,7 +130,7 @@ struct Manifest {
     /// Every folder, empty ones included. Folders that hold notes are here too.
     #[serde(default)]
     folders: BTreeSet<String>,
-    /// The pinned notes. None in a manifest from a Quire version without pins.
+    /// The pinned notes. None in a manifest from a Zotebook version without pins.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pins: Option<BTreeSet<String>>,
 }
@@ -240,7 +258,7 @@ fn open_format(store: &dyn Store, r: &Remote, create: bool) -> Result<Option<cry
         store.put(FORMAT, serde_json::to_vec_pretty(&f).unwrap_or_default().as_slice())?;
         return Ok(keys);
     };
-    let f: Format = serde_json::from_slice(&bytes).map_err(|_| "The remote folder has a format file Quire cannot read.".to_string())?;
+    let f: Format = serde_json::from_slice(&bytes).map_err(|_| "The remote folder has a format file Zotebook cannot read.".to_string())?;
     match (f.encrypted, r.encrypt) {
         (true, false) => return Err("The remote notes are encrypted. Turn on Encrypt before upload and enter the passphrase.".into()),
         (false, true) => return Err("The remote notes are not encrypted. Turn off Encrypt before upload, or use a new remote folder.".into()),

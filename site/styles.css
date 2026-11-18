@@ -1,4 +1,4 @@
-/* Quire site. Colours, type and controls follow the app's design (design/Quire.dc.html). */
+/* Zotebook site. Colours, type and controls follow the app's design (design/Zotebook.dc.html). */
 
 @font-face {
   font-family: "Newsreader";
@@ -336,7 +336,7 @@ strong {
   padding-inline: var(--gutter);
 }
 
-/* Brand lockup: the mark, then "quire" in Instrument Sans 600.
+/* Brand lockup: the mark, then "zotebook" in Instrument Sans 600.
    The mark box is 0.923 em, as in the brand file: a 48 px mark at 52 px type.
    Centred on a line height of 1, the front sheet spans the x-height and the stack
    reaches the cap height. The gap is a quarter of the mark. */

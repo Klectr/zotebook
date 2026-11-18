@@ -88,7 +88,7 @@ impl Images {
         let Some(cache) = self.cache.clone() else { return Remote::Failed("No image cache.".into()) };
         map.insert(url.to_string(), Remote::Loading);
         let (slot, waker, url2) = (self.remote.clone(), self.waker.clone(), url.to_string());
-        let _ = std::thread::Builder::new().name("quire-image".into()).spawn(move || {
+        let _ = std::thread::Builder::new().name("zotebook-image".into()).spawn(move || {
             let got = fetch(&url2).map(|bytes| cache.load(bytes));
             let r = match got {
                 Ok(img) => Remote::Ready(img),
@@ -225,7 +225,7 @@ impl App {
             return Some(r.to_string_lossy().replace('\\', "/"));
         }
         if std::fs::metadata(p).map_or(0, |m| m.len()) > MAX_BYTES {
-            self.notice = Some(format!("{} is larger than 50 MB, so Quire did not add it.", p.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned())));
+            self.notice = Some(format!("{} is larger than 50 MB, so Zotebook did not add it.", p.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned())));
             return None;
         }
         let dir = root.join(ATTACHMENTS);
@@ -438,7 +438,7 @@ mod paste_tests {
         let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
         let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
         let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
-        let dir = std::env::temp_dir().join(format!("quire-banner-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zotebook-banner-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let vault = dir.join("vault");
         std::fs::create_dir_all(vault.join("Docs")).unwrap();

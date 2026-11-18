@@ -1,9 +1,9 @@
-// Quire site: repository links, theme switch, screenshot switches and the copy button.
+// Zotebook site: repository links, theme switch, screenshot switches and the copy button.
 (function () {
   'use strict';
 
   var root = document.documentElement;
-  var THEME_KEY = 'quire-theme';
+  var THEME_KEY = 'zotebook-theme';
 
   // Repository links. The URL lives in one place: data-repo on <html>.
   var repo = (root.getAttribute('data-repo') || '').replace(/\/+$/, '');

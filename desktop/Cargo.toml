@@ -1,12 +1,12 @@
 [package]
-name = "quire"
+name = "zotebook"
 version = "0.5.6"
 edition = "2024"
 license = "MIT"
 description = "A plain editor for folders of Markdown files."
 
 [[bin]]
-name = "quire"
+name = "zotebook"
 path = "src/main.rs"
 
 [dependencies]

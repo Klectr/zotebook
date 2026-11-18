@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=Quire
+Name=Zotebook
 GenericName=Markdown Editor
 Comment=A plain editor for folders of Markdown files
-Exec=quire %F
-Icon=quire
+Exec=zotebook %F
+Icon=zotebook
 Terminal=false
 Categories=Office;TextEditor;Utility;
 MimeType=inode/directory;text/markdown;
-StartupWMClass=quire
+StartupWMClass=zotebook
 Keywords=markdown;notes;editor;wiki;

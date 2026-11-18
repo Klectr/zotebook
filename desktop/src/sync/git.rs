@@ -1,6 +1,6 @@
 //! GitHub sync: commits the open notes folder and syncs its current branch with a Git remote.
 //!
-//! The notes folder must be the root of a Git repository. Quire stages every change, commits it,
+//! The notes folder must be the root of a Git repository. Zotebook stages every change, commits it,
 //! rebases onto the remote branch and pushes. Git's own credentials, SSH agent and remote do the
 //! authentication. Unlike the object-store sync, this keeps the repository's history, and it does
 //! not sync pins or offer encryption: locked notes are still committed as sealed files.
@@ -183,7 +183,7 @@ impl Repo {
     }
 }
 
-/// Keeps Quire's local trash out of the repository on this computer only.
+/// Keeps Zotebook's local trash out of the repository on this computer only.
 fn ignore_trash(root: &Path) -> Result<(), String> {
     let rel = git(root, &["rev-parse", "--git-path", "info/exclude"])?;
     let path = PathBuf::from(rel.trim());
@@ -232,7 +232,7 @@ pub fn run(r: &Remote, root: &Path, device: &str) -> Result<Outcome, String> {
     let staged = git(&repo.root, &["diff", "--cached", "--name-only"]).map_err(|e| format!("Could not read what changed: {}", detail(&e)))?;
     let committed = staged.lines().filter(|l| !l.trim().is_empty()).count();
     if committed > 0 {
-        let message = format!("Quire: notes from {device}");
+        let message = format!("Zotebook: notes from {device}");
         git(&repo.root, &["commit", "--quiet", "-m", &message]).map_err(|e| {
             format!(
                 "Could not commit the notes. Check Git's user.name and user.email. {}",
@@ -268,7 +268,7 @@ mod tests {
     }
 
     fn repo(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("quire-git-{}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("zotebook-git-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         dir
     }
@@ -276,8 +276,8 @@ mod tests {
     fn init(dir: &Path) {
         std::fs::create_dir_all(dir).unwrap();
         git_at(dir, &["init", "-q", "-b", "main"]);
-        git_at(dir, &["config", "user.name", "Quire Test"]);
-        git_at(dir, &["config", "user.email", "quire@example.invalid"]);
+        git_at(dir, &["config", "user.name", "Zotebook Test"]);
+        git_at(dir, &["config", "user.email", "zotebook@example.invalid"]);
     }
 
     #[test]
@@ -308,13 +308,13 @@ mod tests {
         assert!(test(&remote(), &one).unwrap().contains("main"));
         assert_eq!(git_at(&bare, &["show", "main:A.md"]), "one");
         let files = git_at(&bare, &["ls-tree", "-r", "--name-only", "main"]);
-        assert!(!files.contains(".trash"), "Quire's trash must stay out of Git: {files}");
+        assert!(!files.contains(".trash"), "Zotebook's trash must stay out of Git: {files}");
 
         // A second device clones, changes B, and pushes.
         let two_s = two.to_str().unwrap();
         git_at(&base, &["clone", "-q", bare.to_str().unwrap(), two_s]);
-        git_at(&two, &["config", "user.name", "Quire Test"]);
-        git_at(&two, &["config", "user.email", "quire@example.invalid"]);
+        git_at(&two, &["config", "user.name", "Zotebook Test"]);
+        git_at(&two, &["config", "user.email", "zotebook@example.invalid"]);
         std::fs::write(two.join("B.md"), "two\n").unwrap();
         git_at(&two, &["add", "-A"]);
         git_at(&two, &["commit", "-q", "-m", "B"]);
@@ -345,8 +345,8 @@ mod tests {
         run(&remote(), &one, "one").unwrap();
 
         git_at(&base, &["clone", "-q", bare.to_str().unwrap(), two.to_str().unwrap()]);
-        git_at(&two, &["config", "user.name", "Quire Test"]);
-        git_at(&two, &["config", "user.email", "quire@example.invalid"]);
+        git_at(&two, &["config", "user.name", "Zotebook Test"]);
+        git_at(&two, &["config", "user.email", "zotebook@example.invalid"]);
         std::fs::write(two.join("A.md"), "remote\n").unwrap();
         git_at(&two, &["add", "-A"]);
         git_at(&two, &["commit", "-q", "-m", "remote"]);

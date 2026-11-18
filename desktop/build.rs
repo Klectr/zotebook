@@ -2,6 +2,6 @@
 // Other targets skip it.
 fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
-        embed_resource::compile("packaging/windows/quire.rc", embed_resource::NONE).manifest_optional().ok();
+        embed_resource::compile("packaging/windows/zotebook.rc", embed_resource::NONE).manifest_optional().ok();
     }
 }

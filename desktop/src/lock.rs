@@ -5,7 +5,7 @@
 //! ```text
 //! %QUIRE-LOCKED-NOTE v1 pbkdf2-sha256 600000 <salt, base64>
 //!
-//! This note is locked with a password. Open it in Quire to read it.
+//! This note is locked with a password. Open it in Zotebook to read it.
 //!
 //! <the sealed text, base64, 76 characters a line>
 //! ```
@@ -18,7 +18,9 @@ use base64::Engine;
 use crate::sync::crypto::{self, Keys};
 
 pub const MAGIC: &str = "%QUIRE-LOCKED-NOTE";
-const NOTICE: &str = "This note is locked with a password. Open it in Quire to read it.";
+const NOTICE: &str = "This note is locked with a password. Open it in Zotebook to read it.";
+/// The notice in notes locked before the app was renamed.
+const OLD_NOTICE: &str = "This note is locked with a password. Open it in Quire to read it.";
 /// A password shorter than this is refused.
 pub const MIN_PASSWORD: usize = 8;
 
@@ -76,11 +78,11 @@ fn parts(text: &str) -> Result<(Vec<u8>, u32, Vec<u8>), String> {
             let iterations: u32 = iterations.parse().map_err(|_| bad())?;
             let salt = b64().decode(salt).map_err(|_| bad())?;
             // The body is every line after the notice, joined.
-            let body: String = lines.filter(|l| !l.trim().is_empty() && *l != NOTICE).map(str::trim).collect();
+            let body: String = lines.filter(|l| !l.trim().is_empty() && *l != NOTICE && *l != OLD_NOTICE).map(str::trim).collect();
             let sealed = b64().decode(body).map_err(|_| bad())?;
             Ok((salt, iterations, sealed))
         }
-        [m, version, ..] if *m == MAGIC => Err(format!("This note is locked with a newer format ({version}). Update Quire to open it.")),
+        [m, version, ..] if *m == MAGIC => Err(format!("This note is locked with a newer format ({version}). Update Zotebook to open it.")),
         _ => Err(bad()),
     }
 }
@@ -120,6 +122,8 @@ mod tests {
         assert!(locked.lines().all(|l| l.len() <= 76 || l.starts_with(MAGIC)));
         let (plain, k2) = open(&locked, "tiger lily").unwrap();
         assert_eq!(plain, text);
+        // A note locked before the rename, with the old notice, still opens.
+        assert_eq!(open(&locked.replace(NOTICE, OLD_NOTICE), "tiger lily").unwrap().0, text);
         assert_eq!(open_with(&k2, &seal(&k2, "edited")).unwrap(), "edited");
         assert_eq!(open(&locked, "wrong pass").unwrap_err(), "The password does not open this note.");
         let other = Key { keys: crypto::derive("other", b"fedcba9876543210", 1000), salt: b"fedcba9876543210".to_vec(), iterations: 1000 };

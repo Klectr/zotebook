@@ -103,7 +103,7 @@ pub fn spec(s: &App, pid: &str) -> Vec<Field> {
     let cfg = s.settings().sync.cfg.get(pid).cloned().unwrap_or_default();
     let val = |k: &str, d: &str| cfg.get(k).filter(|v| !v.is_empty()).cloned().unwrap_or_else(|| d.to_string());
     let vault = s.vault.as_ref().map_or(String::new(), |v| v.name.clone());
-    let prefix = || f("prefix", "Remote folder").opt().def(format!("quire/{vault}/")).hint("inside the bucket");
+    let prefix = || f("prefix", "Remote folder").opt().def(format!("{}/{vault}/", crate::sync::DEFAULT_ROOT)).hint("inside the bucket");
     let mut out = Vec::new();
     match pid {
         "none" => return out,
@@ -319,7 +319,7 @@ pub fn sync(v: V) -> El {
                 .child(label("How it syncs", sans(14.0, 500.0), p.ink))
                 .child(desc_text(
                     v,
-                    "Quire commits the notes folder, rebases onto the remote branch and pushes it. Use your own Git credentials. Locked notes stay encrypted; other notes are committed as plain text, so use a private repository. Quire keeps .trash out of Git on this computer.",
+                    "Zotebook commits the notes folder, rebases onto the remote branch and pushes it. Use your own Git credentials. Locked notes stay encrypted; other notes are committed as plain text, so use a private repository. Zotebook keeps .trash out of Git on this computer.",
                 )),
         );
     } else {
@@ -390,7 +390,7 @@ pub fn sync(v: V) -> El {
             })
             .child(text(msg).font(sans(12.5, 400.0).lh(12.5 * 1.45)).color(color).wrap().grow(1.0).min_w(180.0)),
     );
-    c.child(label("Keys are saved in Quire's settings file, never inside the notes folder.", mono(11.0, 400.0).lh(16.5), p.mute).pt(14.0).wrap())
+    c.child(label("Keys are saved in Zotebook's settings file, never inside the notes folder.", mono(11.0, 400.0).lh(16.5), p.mute).pt(14.0).wrap())
 }
 
 fn field(v: V, pid: &str, fd: &Field, bad: bool) -> El {

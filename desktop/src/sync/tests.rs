@@ -32,7 +32,7 @@ struct Device {
 
 impl Device {
     fn new(tag: &str, name: &'static str) -> Device {
-        let root = std::env::temp_dir().join(format!("quire-sync-{}-{tag}-{name}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("zotebook-sync-{}-{tag}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).unwrap();
         Device { base: Some(root.with_extension("base.json")), root, name }
@@ -249,7 +249,7 @@ fn custom(endpoint: &str, bucket: &str, secret: &str, encrypt: bool) -> Remote {
     for (k, v) in [("endpoint", endpoint), ("bucket", bucket), ("accessKey", "test"), ("secretKey", secret), ("addressing", "path"), ("region", "eu-north-1")] {
         cfg.insert(k.to_string(), v.to_string());
     }
-    Remote { provider: "custom".into(), cfg, prefix: clean_prefix("quire/Field Notes"), encrypt, pass: "a long enough passphrase".into() }
+    Remote { provider: "custom".into(), cfg, prefix: clean_prefix("zotebook/Field Notes"), encrypt, pass: "a long enough passphrase".into() }
 }
 
 #[test]
@@ -258,7 +258,7 @@ fn s3_requests_are_signed_and_stored() {
     for encrypt in [false, true] {
         let mut r = custom(&url, "notes", "testsecret", encrypt);
         if encrypt {
-            r.prefix = clean_prefix("quire/Secret Notes");
+            r.prefix = clean_prefix("zotebook/Secret Notes");
         }
         let tag = format!("http-{encrypt}");
         let (a, b) = (Device::new(&tag, "laptop"), Device::new(&tag, "phone"));
@@ -277,11 +277,11 @@ fn s3_requests_are_signed_and_stored() {
         assert_eq!(run_with(store.as_ref(), &r, &a.root, "laptop", &a.base).unwrap().deleted_remote, 1);
     }
     let keys: Vec<String> = objects.lock().unwrap().keys().cloned().collect();
-    assert!(keys.contains(&"/notes/quire/Field%20Notes/Notater/Bl%C3%A5b%C3%A6r%20og%20fl%C3%B8te.md".to_string()), "{keys:?}");
-    assert!(keys.contains(&"/notes/quire/Field%20Notes/.quire/manifest.json".to_string()), "{keys:?}");
-    assert!(keys.contains(&"/notes/quire/Secret%20Notes/.quire/manifest.bin".to_string()), "{keys:?}");
+    assert!(keys.contains(&"/notes/zotebook/Field%20Notes/Notater/Bl%C3%A5b%C3%A6r%20og%20fl%C3%B8te.md".to_string()), "{keys:?}");
+    assert!(keys.contains(&"/notes/zotebook/Field%20Notes/.quire/manifest.json".to_string()), "{keys:?}");
+    assert!(keys.contains(&"/notes/zotebook/Secret%20Notes/.quire/manifest.bin".to_string()), "{keys:?}");
     assert!(!keys.iter().any(|k| k.contains("Ideas")), "the deleted note is gone: {keys:?}");
-    assert!(!keys.iter().any(|k| k.starts_with("/notes/quire/Secret%20Notes/Notater")), "encrypted names hide paths: {keys:?}");
+    assert!(!keys.iter().any(|k| k.starts_with("/notes/zotebook/Secret%20Notes/Notater")), "encrypted names hide paths: {keys:?}");
 }
 
 #[test]
@@ -302,7 +302,7 @@ fn s3_errors_say_what_to_fix() {
 fn two_apps_sync_through_s3() {
     use rune::{Env, Runtime};
     let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let dir = std::env::temp_dir().join(format!("quire-appsync-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("zotebook-appsync-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     // SAFETY: the ENV lock keeps other tests that read these variables out.
     unsafe {
@@ -327,7 +327,7 @@ fn two_apps_sync_through_s3() {
             sy.provider = "custom".into();
             sy.cfg.insert("custom".into(), remote.cfg.clone());
             // Two notes folders with other names share one remote folder only when told to.
-            sy.folders.insert(key, "quire/apps/".into());
+            sy.folders.insert(key, "zotebook/apps/".into());
             sy.when = "manual".into();
             sy.connected = true;
         });
@@ -468,16 +468,16 @@ fn an_unsaved_base_loses_no_remote_edit() {
 }
 
 /// A read-only check against the store in a real settings file, with timings:
-/// `QUIRE_LIVE_STATE=~/.config/quire/state.json cargo test live_store_check -- --ignored --nocapture`.
+/// `ZOTEBOOK_LIVE_STATE=~/.config/zotebook/state.json cargo test live_store_check -- --ignored --nocapture`.
 #[test]
 #[ignore]
 fn live_store_check() {
-    let Ok(path) = std::env::var("QUIRE_LIVE_STATE") else { return };
+    let Ok(path) = std::env::var("ZOTEBOOK_LIVE_STATE") else { return };
     let state: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     let sy = &state["settings"]["sync"];
     let provider = sy["provider"].as_str().unwrap_or("none").to_string();
     let cfg: BTreeMap<String, String> = sy["cfg"][&provider].as_object().unwrap().iter().map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string())).collect();
-    let prefix = clean_prefix(cfg.get("prefix").map_or("quire/notes/", |s| s.as_str()));
+    let prefix = clean_prefix(cfg.get("prefix").map_or("zotebook/notes/", |s| s.as_str()));
     let r = Remote { provider, cfg, prefix, encrypt: sy["encrypt"].as_bool().unwrap_or(false), pass: sy["pass"].as_str().unwrap_or("").to_string() };
     let store = open_store(&r).unwrap();
     for key in [".quire/format.json", ".quire/manifest.json", ".quire/manifest.json", "missing-object.md"] {
@@ -493,16 +493,16 @@ fn live_store_check() {
 }
 
 /// Prints a summary of the remote manifest in a real settings file: counts, devices and
-/// conflict copies. `QUIRE_LIVE_STATE=… cargo test live_manifest_summary -- --ignored --nocapture`.
+/// conflict copies. `ZOTEBOOK_LIVE_STATE=… cargo test live_manifest_summary -- --ignored --nocapture`.
 #[test]
 #[ignore]
 fn live_manifest_summary() {
-    let Ok(path) = std::env::var("QUIRE_LIVE_STATE") else { return };
+    let Ok(path) = std::env::var("ZOTEBOOK_LIVE_STATE") else { return };
     let state: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     let sy = &state["settings"]["sync"];
     let provider = sy["provider"].as_str().unwrap_or("none").to_string();
     let cfg: BTreeMap<String, String> = sy["cfg"][&provider].as_object().unwrap().iter().map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string())).collect();
-    let prefix = clean_prefix(cfg.get("prefix").map_or("quire/notes/", |s| s.as_str()));
+    let prefix = clean_prefix(cfg.get("prefix").map_or("zotebook/notes/", |s| s.as_str()));
     let r = Remote { provider, cfg, prefix, encrypt: sy["encrypt"].as_bool().unwrap_or(false), pass: sy["pass"].as_str().unwrap_or("").to_string() };
     let store = open_store(&r).unwrap();
     let keys = open_format(store.as_ref(), &r, false).unwrap();
@@ -523,16 +523,16 @@ fn live_manifest_summary() {
 }
 
 /// Reads every object in the remote manifest once, as a first sync does, and counts the
-/// answers. Read-only. `QUIRE_LIVE_STATE=… cargo test live_burst -- --ignored --nocapture`.
+/// answers. Read-only. `ZOTEBOOK_LIVE_STATE=… cargo test live_burst -- --ignored --nocapture`.
 #[test]
 #[ignore]
 fn live_burst() {
-    let Ok(path) = std::env::var("QUIRE_LIVE_STATE") else { return };
+    let Ok(path) = std::env::var("ZOTEBOOK_LIVE_STATE") else { return };
     let state: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     let sy = &state["settings"]["sync"];
     let provider = sy["provider"].as_str().unwrap_or("none").to_string();
     let cfg: BTreeMap<String, String> = sy["cfg"][&provider].as_object().unwrap().iter().map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string())).collect();
-    let prefix = clean_prefix(cfg.get("prefix").map_or("quire/notes/", |s| s.as_str()));
+    let prefix = clean_prefix(cfg.get("prefix").map_or("zotebook/notes/", |s| s.as_str()));
     let r = Remote { provider, cfg, prefix, encrypt: sy["encrypt"].as_bool().unwrap_or(false), pass: sy["pass"].as_str().unwrap_or("").to_string() };
     let store = open_store(&r).unwrap();
     let keys = open_format(store.as_ref(), &r, false).unwrap();
@@ -564,7 +564,7 @@ fn a_busy_gateway_is_retried() {
     assert!(objects.lock().unwrap().len() >= 42);
     let (url, _) = s3_server_failing("testsecret", 1);
     let err = test(&custom(&url, "notes", "testsecret", false), 0, false).unwrap_err();
-    assert_eq!(err, "The storage service did not answer in time (504). Quire tries again on the next sync.");
+    assert_eq!(err, "The storage service did not answer in time (504). Zotebook tries again on the next sync.");
 }
 
 /// Syncs with `pins` as the device's pins, then takes the pins the sync returns.

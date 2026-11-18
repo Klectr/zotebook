@@ -2,11 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Quire</string>
-  <key>CFBundleDisplayName</key><string>Quire</string>
-  <key>CFBundleIdentifier</key><string>app.quire.desktop</string>
-  <key>CFBundleExecutable</key><string>quire</string>
-  <key>CFBundleIconFile</key><string>quire</string>
+  <key>CFBundleName</key><string>Zotebook</string>
+  <key>CFBundleDisplayName</key><string>Zotebook</string>
+  <key>CFBundleIdentifier</key><string>com.zotebook.app</string>
+  <key>CFBundleExecutable</key><string>zotebook</string>
+  <key>CFBundleIconFile</key><string>zotebook</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>@VERSION@</string>
   <key>CFBundleVersion</key><string>@VERSION@</string>
