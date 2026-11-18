@@ -154,7 +154,6 @@ impl App {
             self.toggle_folder(folder);
             return;
         }
-        self.expanded.insert(folder.to_string());
         let note = match self.folder_note(folder) {
             Some(p) => Some(p),
             None => self.create_folder_note(folder),
@@ -664,6 +663,13 @@ mod tests {
         assert!(s.files().contains_key("Projects/Projects.md"));
         s.open_folder("Areas", &mut tx);
         assert_eq!(s.active.as_deref(), Some("Areas/Areas.md"));
+        assert!(!s.expanded.contains("Areas"), "opening a folder's note leaves the folder closed");
+        assert!(!s.expanded.contains("Projects"));
+        s.toggle_folder("Areas");
+        s.open_folder("Areas", &mut tx);
+        assert!(s.expanded.contains("Areas"), "and an open folder stays open");
+        s.open_file("Areas/Plan.md", None, &mut tx);
+        assert!(s.expanded.contains("Areas"), "a note inside a folder still opens it");
         assert!(s.files().contains_key("Areas/Areas.md"));
         assert_eq!(s.folder_note("Projects").as_deref(), Some("Projects/Projects.md"));
         drop(s);

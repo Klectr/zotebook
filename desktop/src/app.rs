@@ -866,7 +866,12 @@ impl App {
         }
         let changed = self.active.as_deref() != Some(path);
         self.active = Some(path.to_string());
+        // The folders above the note open, so its row shows. A folder note's row is its
+        // folder's row, so that folder stays as it is: only the chevron opens or closes it.
         let mut d = md::dir(path).to_string();
+        if md::is_folder_note(path) {
+            d = md::dir(&d).to_string();
+        }
         while !d.is_empty() {
             self.expanded.insert(d.clone());
             d = md::dir(&d).to_string();
