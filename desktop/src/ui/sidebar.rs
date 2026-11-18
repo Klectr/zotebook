@@ -619,7 +619,7 @@ fn search_panel(v: V) -> El {
     let ql = q.len();
     for (ri, r) in results.iter().enumerate() {
         let lines: Vec<&str> = s.files().get(&r.path).map(|t| t.split('\n').collect()).unwrap_or_default();
-        let first = r.hits.first().map(|h| Sel { start: h.pos, end: h.pos + ql, line: Some(h.line), force_source: true });
+        let first = r.hits.first().map(|h| Sel { start: h.pos, end: h.pos + ql, line: Some(h.line), force_source: false });
         let path = r.path.clone();
         let name_style = sans(13.0, 600.0);
         let small = mono(11.0, 400.0);
@@ -655,7 +655,7 @@ fn search_panel(v: V) -> El {
                 Span { start: (m1 - 1) as u32, end: m1 as u32, ..pad },
             ];
             let path = r.path.clone();
-            let sel = Sel { start: h.pos, end: h.pos + ql, line: Some(h.line), force_source: true };
+            let sel = Sel { start: h.pos, end: h.pos + ql, line: Some(h.line), force_source: false };
             block = block.child(
                 el().key(format!("hit-{hi}")).my(1.0).mx(8.0).px(12.0).py(4.0).radius(6.0).hover(p.hover).role("button").on_press_tx(move |s: &mut App, tx| s.open_file(&path, Some(sel), tx)).child(
                     rich(text_, spans).font(sans(12.5, 400.0).lh(12.5 * 1.45)).color(p.ink2).wrap().wrap_anywhere().w_full(),

@@ -74,6 +74,7 @@ pub struct Sel {
     pub start: usize,
     pub end: usize,
     pub line: Option<usize>,
+    /// Opens the note in the editor even when the preview is on, as a note just made is.
     pub force_source: bool,
 }
 
@@ -894,7 +895,14 @@ impl App {
                 e.break_history_group();
             }
             if let Some(line) = s.line {
-                tx.scroll_key_to(format!("ln-{line}"), 120.0);
+                // The preview has a block where the editor has a line.
+                if self.mode == Mode::Preview {
+                    if let Some(b) = md::block_line(self.active_text(), line) {
+                        tx.scroll_key_to(format!("pv-{b}"), 120.0);
+                    }
+                } else {
+                    tx.scroll_key_to(format!("ln-{line}"), 120.0);
+                }
             }
         } else if changed {
             tx.scroll_to_instant("doc-scroll", 0.0, 0.0);

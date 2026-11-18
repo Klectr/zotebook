@@ -154,13 +154,15 @@ impl App {
             self.toggle_folder(folder);
             return;
         }
-        let note = match self.folder_note(folder) {
-            Some(p) => Some(p),
-            None => self.create_folder_note(folder),
+        // An existing note opens in the mode the app is in. A new one is empty, so it opens in
+        // the editor, as any new note does.
+        let (note, made) = match self.folder_note(folder) {
+            Some(p) => (Some(p), false),
+            None => (self.create_folder_note(folder), true),
         };
         if let Some(p) = note {
             let end = self.files().get(&p).map_or(0, String::len);
-            self.open_file(&p, Some(Sel { start: end, end, line: None, force_source: true }), tx);
+            self.open_file(&p, Some(Sel { start: end, end, line: None, force_source: made }), tx);
         }
     }
 
@@ -672,6 +674,13 @@ mod tests {
         assert!(s.expanded.contains("Areas"), "a note inside a folder still opens it");
         assert!(s.files().contains_key("Areas/Areas.md"));
         assert_eq!(s.folder_note("Projects").as_deref(), Some("Projects/Projects.md"));
+        s.mode = Mode::Preview;
+        s.open_folder("Projects", &mut tx);
+        assert_eq!(s.active.as_deref(), Some("Projects/Projects.md"));
+        assert_eq!(s.mode, Mode::Preview, "an existing folder note keeps the preview on");
+        let hit = crate::app::Sel { start: 2, end: 6, line: Some(0), force_source: false };
+        s.open_file("Areas/Plan.md", Some(hit), &mut tx);
+        assert_eq!(s.mode, Mode::Preview, "so does a search result");
         drop(s);
         unsafe {
             for (k, v) in old {

@@ -869,6 +869,22 @@ pub enum Block {
     Para { line: usize, text: String },
 }
 
+impl Block {
+    /// The note line the block starts on. A rule has none.
+    pub fn line(&self) -> Option<usize> {
+        match self {
+            Block::Image { line, .. } | Block::Pre { line, .. } | Block::Heading { line, .. } | Block::Quote { line, .. } | Block::List { line, .. } | Block::Para { line, .. } => Some(*line),
+            Block::Rule => None,
+        }
+    }
+}
+
+/// The first line of the preview block that holds note line `line`, for scrolling the preview
+/// to it.
+pub fn block_line(text: &str, line: usize) -> Option<usize> {
+    blocks(text).iter().filter_map(Block::line).take_while(|&l| l <= line).last()
+}
+
 fn is_list(l: &str) -> bool {
     list_line(l).is_some()
 }
@@ -1177,6 +1193,15 @@ mod tests {
         assert!(is_folder_note_in("🎉 Party/Party.md", "🎉 Party"));
         assert!(is_folder_note_in("🎉 Party/🎉 Party.md", "🎉 Party"));
         assert_eq!(folder_for_link(&["Archive".into(), "🎉 Party".into()], "Party"), Some("🎉 Party".into()));
+    }
+
+    #[test]
+    fn a_line_maps_to_its_preview_block() {
+        let text = "---\ntitle: x\n---\n# Head\n\nOne\ntwo\n\n- a\n- b\n";
+        assert_eq!(block_line(text, 3), Some(3));
+        assert_eq!(block_line(text, 6), Some(5), "a line inside a paragraph scrolls to the paragraph");
+        assert_eq!(block_line(text, 9), Some(8));
+        assert_eq!(block_line(text, 1), None, "front matter is not in the preview");
     }
 
     #[test]
