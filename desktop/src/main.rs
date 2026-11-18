@@ -6,6 +6,7 @@
 mod app;
 mod cli;
 mod commands;
+mod calendar;
 mod emoji;
 mod folders;
 mod format;

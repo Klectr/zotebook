@@ -103,6 +103,8 @@ pub struct App {
     pub creating: Option<TextEdit>,
     /// The heading at the top of the preview, for the outline's dot.
     pub prev_head: usize,
+    /// The month the calendar shows after ‹ or ›. `None` follows the open day note, or today.
+    pub cal_month: Option<(i32, u32)>,
     /// One editor per open note, so each keeps its caret and undo history.
     pub edits: HashMap<String, TextEdit>,
     /// Single-line fields in settings, by key.
@@ -194,6 +196,7 @@ pub fn init() -> App {
         renaming: None,
         creating: None,
         prev_head: 0,
+        cal_month: None,
         edits: HashMap::new(),
         fields: HashMap::new(),
         reveal: BTreeSet::new(),
@@ -866,6 +869,9 @@ impl App {
             self.tabs.push(path.to_string());
         }
         let changed = self.active.as_deref() != Some(path);
+        if changed {
+            self.cal_month = None;
+        }
         self.active = Some(path.to_string());
         // The folders above the note open, so its row shows. A folder note's row is its
         // folder's row, so that folder stays as it is: only the chevron opens or closes it.
@@ -966,31 +972,57 @@ impl App {
     }
 
     pub fn open_today(&mut self, tx: &mut Tx) {
-        let ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64);
-        let now = rune::LocalTime::at(ms);
+        self.open_day(crate::calendar::Day::today(), tx);
+    }
+
+    /// The journal folder: `Journal`, or `Journal` with an icon. `Journal` when there is none yet.
+    pub fn journal_dir(&self) -> String {
         let folders = self.folder_list();
-        let folder = md::journal_folder(folders.iter().map(String::as_str)).unwrap_or("Journal").to_string();
-        let p = format!("{folder}/{:04}-{:02}-{:02}.md", now.year, now.month, now.day);
-        let existing = self.files().get(&p).cloned();
-        let text = match existing {
-            Some(t) => t,
-            None => {
-                let c = format!("# {}\n\n#journal\n\n", long_date(now.year, now.month, now.day));
-                if let Some(v) = &mut self.vault {
-                    v.files.insert(p.clone(), c.clone());
-                    v.born.insert(p.clone(), now_ns());
-                    if !v.folders.contains(&folder) {
-                        v.folders.push(folder.clone());
-                        v.folders.sort();
-                    }
+        md::journal_folder(folders.iter().map(String::as_str)).unwrap_or("Journal").to_string()
+    }
+
+    /// The day a journal entry stands for, from its path such as `Journal/2026-11-17.md`.
+    pub fn note_day(&self, path: &str) -> Option<crate::calendar::Day> {
+        (md::dir(path) == self.journal_dir()).then(|| crate::calendar::parse(md::base(path))).flatten()
+    }
+
+    /// The days of a month that have a journal entry.
+    pub fn journal_days(&self, year: i32, month: u32) -> std::collections::HashSet<u32> {
+        let dir = self.journal_dir();
+        let prefix = format!("{dir}/{year:04}-{month:02}-");
+        self.files()
+            .range(prefix.clone()..)
+            .take_while(|(p, _)| p.starts_with(&prefix))
+            .filter(|(p, _)| md::dir(p) == dir)
+            .filter_map(|(p, _)| crate::calendar::parse(md::base(p)))
+            .map(|d| d.day)
+            .collect()
+    }
+
+    /// Opens the journal entry for `day`, making it when it is not there. An existing entry
+    /// opens in the mode the app is in; a new one is empty, so it opens in the editor.
+    pub fn open_day(&mut self, day: crate::calendar::Day, tx: &mut Tx) {
+        if self.vault.is_none() {
+            return;
+        }
+        let folder = self.journal_dir();
+        let p = format!("{folder}/{}.md", day.name());
+        let made = !self.files().contains_key(&p);
+        if made {
+            let c = format!("# {}\n\n#journal\n\n", day.long());
+            if let Some(v) = &mut self.vault {
+                v.files.insert(p.clone(), c);
+                v.born.insert(p.clone(), now_ns());
+                if !v.folders.contains(&folder) {
+                    v.folders.push(folder.clone());
+                    v.folders.sort();
                 }
-                self.rebuild_names();
-                self.mark_dirty(&p);
-                c
             }
-        };
-        let end = text.len();
-        self.open_file(&p, Some(Sel { start: end, end, line: None, force_source: true }), tx);
+            self.rebuild_names();
+            self.mark_dirty(&p);
+        }
+        let end = self.files().get(&p).map_or(0, String::len);
+        self.open_file(&p, Some(Sel { start: end, end, line: None, force_source: made }), tx);
     }
 
     pub fn open_link(&mut self, name: &str, tx: &mut Tx) {
@@ -1282,16 +1314,6 @@ pub(crate) fn now_ns() -> u128 {
 }
 
 /// "Thursday 12 November", as `toLocaleDateString('en-GB')` writes it.
-fn long_date(year: i32, month: u32, day: u32) -> String {
-    const DAYS: [&str; 7] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    // Sakamoto's method: 0 is Sunday.
-    const T: [i32; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
-    let y = if month < 3 { year - 1 } else { year };
-    let w = (y + y / 4 - y / 100 + y / 400 + T[(month as usize + 11) % 12] + day as i32).rem_euclid(7);
-    format!("{} {} {}", DAYS[w as usize], day, MONTHS[(month as usize + 11) % 12])
-}
-
 #[cfg(test)]
 mod watch_tests {
     /// The watcher can read a save of this app after newer typing has gone out. That old save

@@ -1,10 +1,11 @@
 //! The right panel (outline and backlinks) and the status bar.
 
-use rune::{Color, El, ScrollSpec, col, el, row, text};
+use rune::{Color, El, ScrollSpec, col, el, icon, row, text};
 
 use super::V;
 use super::editor::{group, link_at_caret};
-use super::widgets::label;
+use super::widgets::{CHEVRON_RIGHT, label};
+use crate::calendar::{self, Day};
 use crate::app::{App, Mode};
 use crate::keys::mod_click;
 use crate::md;
@@ -25,7 +26,14 @@ pub fn outline(v: V) -> El {
         Some(v.prev_head.min(heads.len() - 1))
     };
     let min_lv = heads.iter().map(|h| h.level).min().unwrap_or(6);
-    let mut c = col().key("outline-list").w_full().pt(24.0).px(10.0).pb(24.0).child(text("outline").font(mono(11.0, 400.0)).color(p.mute).px(10.0).pb(8.0));
+    let mut c = col()
+        .key("outline-list")
+        .w_full()
+        .pt(24.0)
+        .px(10.0)
+        .pb(24.0)
+        .child(calendar_panel(v))
+        .child(text("outline").font(mono(11.0, 400.0)).color(p.mute).px(10.0).pt(22.0).pb(8.0));
     for (i, h) in heads.iter().enumerate() {
         let on = cur == Some(i);
         let line = h.line;
@@ -78,6 +86,110 @@ pub fn outline(v: V) -> El {
         c = c.child(text("No notes link here yet.").font(sans(12.5, 400.0).lh(12.5 * 1.45)).color(p.mute).py(2.0).px(10.0));
     }
     col().key("outline").w(236.0).h_full().min_h(0.0).border_sides([0.0, 0.0, 0.0, 1.0], p.line).border_layout().scroll(ScrollSpec { stick_bottom: false }).child(c)
+}
+
+/// A month of the journal: a dot marks a day with an entry, an accent ring marks today, and
+/// the open entry's day is filled. A click opens that day's entry, making it when needed.
+fn calendar_panel(v: V) -> El {
+    let p = v.p;
+    let s = v.s;
+    let today = Day::today();
+    let open = s.active.as_deref().and_then(|a| s.note_day(a));
+    let (year, month) = s.cal_month.or(open.map(|d| (d.year, d.month))).unwrap_or((today.year, today.month));
+    let have = s.journal_days(year, month);
+
+    let step = |key: &str, by: i32, help: &str| {
+        let mut chev = icon(&CHEVRON_RIGHT, 8.0).color(p.mute);
+        if by < 0 {
+            chev = chev.rotate(std::f32::consts::PI);
+        }
+        row()
+            .key(key)
+            .size(22.0, 22.0)
+            .center()
+            .radius(5.0)
+            .hover(p.hover)
+            .role("button")
+            .label(help)
+            .help(help)
+            .on_press(move |s: &mut App| s.cal_month = Some(calendar::add_months(year, month, by)))
+            .child(chev)
+    };
+    let head = row()
+        .key("cal-head")
+        .w_full()
+        .px(4.0)
+        .pb(6.0)
+        .gap(2.0)
+        .center_y()
+        .child(text(format!("{} {year}", calendar::MONTHS[(month - 1) as usize])).font(sans(13.0, 500.0)).color(p.ink).grow(1.0).px(6.0))
+        .child(step("cal-prev", -1, "Previous month"))
+        .child(
+            row()
+                .key("cal-today")
+                .h(22.0)
+                .px(7.0)
+                .center()
+                .radius(5.0)
+                .hover(p.hover)
+                .role("button")
+                .label("Open today's journal entry")
+                .help("Open today's journal entry")
+                .on_press_tx(|s: &mut App, tx| {
+                    s.cal_month = None;
+                    s.open_today(tx);
+                })
+                .child(label("Today", sans(12.0, 500.0), p.ink2)),
+        )
+        .child(step("cal-next", 1, "Next month"));
+
+    let cell_h = 28.0;
+    let mut weekdays = row().key("cal-days").w_full().px(4.0);
+    for (i, d) in ["S", "M", "T", "W", "T", "F", "S"].iter().enumerate() {
+        weekdays = weekdays.child(el().key(format!("wd-{i}")).grow(1.0).w(0.0).h(18.0).center().child(text(*d).font(mono(10.5, 400.0)).color(p.mute)));
+    }
+    let mut grid = col().key("cal-grid").w_full().px(4.0);
+    for (wi, week) in calendar::grid(year, month).into_iter().enumerate() {
+        let mut r = row().key(format!("cal-w{wi}")).w_full();
+        for (di, cell) in week.into_iter().enumerate() {
+            let slot = el().key(format!("c{di}")).grow(1.0).w(0.0).h(cell_h).center();
+            let Some(d) = cell else {
+                r = r.child(slot);
+                continue;
+            };
+            let day = Day::new(year, month, d);
+            let is_today = day == today;
+            let is_open = open == Some(day);
+            let has = have.contains(&d);
+            let mut cell = col()
+                .key("day")
+                .size(26.0, 26.0)
+                .center()
+                .radius(7.0)
+                .hover(p.hover)
+                .role("button")
+                .label(format!("{}{}", day.long(), if has { ", has an entry" } else { "" }))
+                .help(day.long())
+                .on_press_tx(move |s: &mut App, tx| s.open_day(day, tx))
+                .child(text(d.to_string()).font(sans(12.0, if is_today || is_open { 600.0 } else { 400.0 }).lh(14.0)).color(if is_today { p.acc } else if has || is_open { p.ink } else { p.ink2 }))
+                .child(el().key("dot").size(4.0, 4.0).mt(1.0).radius(2.0).fill(if has { if is_today { p.acc } else { p.mute } } else { Color::TRANSPARENT }));
+            if is_open {
+                cell = cell.fill(p.act);
+            }
+            if is_today {
+                cell = cell.border(1.0, p.acc.alpha(0.55));
+            }
+            r = r.child(slot.child(cell));
+        }
+        grid = grid.child(r);
+    }
+    col()
+        .key("calendar")
+        .w_full()
+        .child(text("calendar").font(mono(11.0, 400.0)).color(p.mute).px(10.0).pb(8.0))
+        .child(head)
+        .child(weekdays)
+        .child(grid)
 }
 
 pub fn status(v: V) -> El {

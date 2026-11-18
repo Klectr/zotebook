@@ -839,6 +839,27 @@ mod tests {
         assert!(!vault.join("Journal").exists(), "no second Journal folder");
         assert!(!s.folder_list().iter().any(|f| f == "Journal"));
 
+        // The calendar: a click on a day with no entry makes one and opens it to write in; an
+        // existing entry opens in the mode the app is in.
+        use crate::app::Mode;
+        use crate::calendar::Day;
+        let day = Day::new(2026, 2, 3);
+        assert!(!s.journal_days(2026, 2).contains(&3));
+        s.mode = Mode::Preview;
+        s.open_day(day, &mut tx);
+        let p = s.active.clone().unwrap();
+        assert_eq!(p, "📓 Journal/2026-02-03.md");
+        assert_eq!(s.files()[&p], "# Tuesday 3 February\n\n#journal\n\n");
+        assert_eq!(s.mode, Mode::Source, "a new entry opens in the editor");
+        assert_eq!(s.note_day(&p), Some(day));
+        assert_eq!(s.journal_days(2026, 2).into_iter().collect::<Vec<_>>(), vec![3]);
+        s.open_file("📓 Journal/2020-01-01.md", None, &mut tx);
+        assert_eq!(s.note_day("📓 Journal/2020-01-01.md"), Some(Day::new(2020, 1, 1)));
+        s.mode = Mode::Preview;
+        s.open_day(day, &mut tx);
+        assert_eq!(s.active.as_deref(), Some(p.as_str()));
+        assert_eq!(s.mode, Mode::Preview, "an existing entry keeps the preview on");
+
         drop(s);
         unsafe {
             for (k, v) in old {
