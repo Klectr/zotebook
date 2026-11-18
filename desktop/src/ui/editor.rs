@@ -84,7 +84,16 @@ fn doc_scroll(v: V) -> El {
     if v.has_doc() {
         let size = s.settings().size as f32;
         let pad_x = if focus { clamp(20.0, v.vw * 0.06, 64.0) } else { clamp(20.0, v.vw * 0.05, 56.0) };
+        let locked = s.active.as_deref().is_some_and(|a| s.note_locked(a));
+        let banner = if locked { None } else { s.active_banner() };
+        let icon = s.active.as_deref().and_then(md::note_icon);
         let (pad_t, pad_b) = if focus { (v.vh * 0.16, v.vh * 0.48) } else { (34.0, v.vh * 0.38) };
+        // Under a banner the page starts close to it, and an icon overlaps its lower edge.
+        let pad_t = match (&banner, icon) {
+            (Some(_), Some(_)) => 0.0,
+            (Some(_), None) => 28.0,
+            _ => pad_t,
+        };
         let ch = if focus { 68.0 } else { 72.0 };
         let mut column = col()
             .key("doc-col")
@@ -104,13 +113,25 @@ fn doc_scroll(v: V) -> El {
         if s.settings().width == "readable" {
             column = column.max_w(size * 0.6 * ch + 2.0 * pad_x);
         }
-        if !focus {
-            column = column.child(crumb(v));
+        match (icon, banner.is_some()) {
+            (Some(icon), true) => {
+                column = column.child(sticker(v, icon).mt(-STICKER_H / 2.0));
+                if !focus {
+                    column = column.child(crumb(v));
+                }
+            }
+            (icon, _) => {
+                if !focus {
+                    column = column.child(crumb(v));
+                }
+                if let Some(icon) = icon {
+                    column = column.child(sticker(v, icon));
+                }
+            }
         }
-        if let Some(icon) = s.active.as_deref().and_then(md::note_icon) {
-            column = column.child(sticker(v, icon));
+        if let Some(b) = &banner {
+            content = content.child(banner_el(v, b));
         }
-        let locked = s.active.as_deref().is_some_and(|a| s.note_locked(a));
         column = column.child(if locked {
             super::lock::panel(v)
         } else if s.mode == Mode::Source {
@@ -279,9 +300,22 @@ fn crumb(v: V) -> El {
         r = r.child(label(dir, style, p.mute)).child(label("/", style, p.mark));
     }
     let add_icon = md::note_icon(&active).is_none();
+    let add_banner = !s.note_locked(&active) && s.active_banner().is_none();
     match &s.renaming {
-        None if add_icon => r.child(crumb_file(v, &active, style)).child(add_icon_button(v)),
-        None => r.child(crumb_file(v, &active, style)),
+        None => {
+            let mut r = r.child(crumb_file(v, &active, style));
+            if add_icon {
+                r = r.child(add_button(v, "add-icon", "☺ Add icon", "Give this note an emoji icon", |s, tx| {
+                    if let Some(a) = s.active.clone() {
+                        s.start_note_icon(&a, tx);
+                    }
+                }));
+            }
+            if add_banner {
+                r = r.child(add_button(v, "add-banner", "▭ Add banner", "Put an image across the top of this note", |s, tx| s.pick_banner(tx)));
+            }
+            r
+        }
         Some(edit) => {
             let w = (edit.text.chars().count() as f32 + 1.0).max(8.0) * 12.0 * 0.6 + 10.0;
             r.child(
@@ -314,6 +348,63 @@ fn crumb(v: V) -> El {
     }
 }
 
+/// The height of the sticker with its padding.
+const STICKER_H: f32 = 76.0 + 8.0;
+
+/// The note's banner: its image across the whole page, cropped to cover it as CSS `cover` does.
+/// Change and Remove show on hover.
+fn banner_el(v: V, src: &str) -> El {
+    let p = v.p;
+    let s = v.s;
+    let h = clamp(140.0, v.vh * 0.3, 280.0);
+    let img = md::Img { alt: String::new(), src: src.to_string(), embed: false };
+    let handle = match s.image_source(&img) {
+        crate::images::Source::File(path) => s.images.file(&path).map(Ok),
+        crate::images::Source::Url(url) => match s.images.remote(&url) {
+            crate::images::Remote::Ready(i) => Some(Ok(i)),
+            crate::images::Remote::Loading => None,
+            crate::images::Remote::Failed(e) => Some(Err(format!("Could not load the banner: {e}"))),
+        },
+        crate::images::Source::Missing(src) => Some(Err(format!("No banner image at {src}"))),
+    };
+    let mut b = el().key("banner").w_full().h(h).fill(p.code).hover_group().role("img").label("Banner");
+    match handle {
+        Some(Ok(i)) if i.error().is_some() => b = b.child(banner_note(v, format!("Could not show the banner: {}", i.error().map_or("", |e| e.0.as_str())))),
+        Some(Ok(i)) => b = b.pixels_fit(i.pixels(), rune::SurfaceFit::Fill),
+        Some(Err(msg)) => b = b.child(banner_note(v, msg)),
+        None => {}
+    }
+    let button = |key: &str, text_: &str, run: fn(&mut App, &mut Tx)| {
+        row()
+            .key(key)
+            .px(10.0)
+            .py(5.0)
+            .radius(6.0)
+            .fill(p.bg)
+            .hover(p.hover)
+            .role("button")
+            .label(text_)
+            .on_press_tx(move |s: &mut App, tx| run(s, tx))
+            .child(label(text_, sans(12.0, 500.0), p.ink2))
+    };
+    b.child(
+        row()
+            .key("banner-actions")
+            .pin(None, None, Some(16.0), Some(12.0))
+            .gap(6.0)
+            .group_opacity(0.0, 1.0)
+            .child(button("banner-change", "Change banner", |s, tx| s.pick_banner(tx)))
+            .child(button("banner-remove", "Remove", |s, tx| {
+                s.set_banner(None);
+                s.focus_editor(tx);
+            })),
+    )
+}
+
+fn banner_note(v: V, msg: String) -> El {
+    row().pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).center().padding(16.0).child(label(msg, sans(13.0, 400.0), v.p.mute).wrap())
+}
+
 /// The note's icon, large above the text, as a page icon in Notion. A click changes it.
 fn sticker(v: V, icon: &str) -> El {
     let p = v.p;
@@ -336,27 +427,23 @@ fn sticker(v: V, icon: &str) -> El {
     )
 }
 
-/// The crumb's "Add icon" button for a note without an icon. It shows while the pointer is
-/// over the crumb, as Notion's does over the title.
-fn add_icon_button(v: V) -> El {
+/// A crumb button such as "Add icon" for what the note does not have yet. It shows while the
+/// pointer is over the crumb, as Notion's do over the title.
+fn add_button(v: V, key: &str, text_: &str, help: &str, run: fn(&mut App, &mut Tx)) -> El {
     let p = v.p;
     row()
-        .key("add-icon")
-        .ml(10.0)
+        .key(key)
+        .ml(4.0)
         .px(6.0)
         .py(2.0)
         .radius(5.0)
         .hover(p.hover)
         .group_opacity(0.0, 1.0)
         .role("button")
-        .label("Add icon")
-        .help("Give this note an emoji icon")
-        .on_press_tx(|s: &mut App, tx| {
-            if let Some(a) = s.active.clone() {
-                s.start_note_icon(&a, tx);
-            }
-        })
-        .child(label("☺ Add icon", sans(12.0, 400.0), p.mute))
+        .label(text_.trim_start_matches(|c: char| !c.is_alphabetic()))
+        .help(help)
+        .on_press_tx(move |s: &mut App, tx| run(s, tx))
+        .child(label(text_, sans(12.0, 400.0), p.mute))
 }
 
 fn source(v: V) -> El {

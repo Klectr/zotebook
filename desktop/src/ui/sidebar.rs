@@ -173,7 +173,14 @@ fn files_panel(v: V) -> El {
     let s = v.s;
     let Some(vault) = &s.vault else { return col() };
     let mut root = Node::new(String::new());
+    // `attachments/` holds images and banners, not notes, so it stays out of the tree until a
+    // note goes in it.
+    let att = crate::images::ATTACHMENTS;
+    let att_notes = vault.files.keys().any(|f| f.starts_with(&format!("{att}/")));
     for f in &s.folder_list() {
+        if !att_notes && (f == att || f.starts_with(&format!("{att}/"))) {
+            continue;
+        }
         root.add(f);
     }
     let pinned = s.pinned_notes();

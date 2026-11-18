@@ -212,29 +212,89 @@ impl App {
             }
             return false;
         }
-        let mut rels = Vec::new();
-        for p in images {
-            let inside = p.canonicalize().ok().zip(root.canonicalize().ok()).and_then(|(p, r)| p.strip_prefix(&r).ok().map(Path::to_path_buf));
-            let rel = match inside {
-                Some(r) if !r.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')) => r.to_string_lossy().replace('\\', "/"),
-                _ => {
-                    if std::fs::metadata(p).map_or(0, |m| m.len()) > MAX_BYTES {
-                        self.notice = Some(format!("{} is larger than 50 MB, so Quire did not add it.", p.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned())));
-                        continue;
-                    }
-                    let dir = root.join(ATTACHMENTS);
-                    let name = p.file_name().map_or_else(|| "image.png".to_string(), |n| n.to_string_lossy().into_owned());
-                    let name = unique(&dir, &name);
-                    if let Err(e) = std::fs::create_dir_all(&dir).and_then(|_| std::fs::copy(p, dir.join(&name))) {
-                        self.notice = Some(format!("Could not copy {name}: {e}"));
-                        continue;
-                    }
-                    format!("{ATTACHMENTS}/{name}")
-                }
-            };
-            rels.push(rel);
-        }
+        let rels: Vec<String> = images.into_iter().filter_map(|p| self.import_image(&root, p)).collect();
         self.link_images(&rels, tx)
+    }
+
+    /// The path in the notes folder of the image file `p`. A file from outside the folder, or
+    /// from a hidden folder in it, is copied into `attachments/` first. `None`, with a notice,
+    /// when it cannot be.
+    fn import_image(&mut self, root: &Path, p: &Path) -> Option<String> {
+        let inside = p.canonicalize().ok().zip(root.canonicalize().ok()).and_then(|(p, r)| p.strip_prefix(&r).ok().map(Path::to_path_buf));
+        if let Some(r) = inside.filter(|r| !r.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.'))) {
+            return Some(r.to_string_lossy().replace('\\', "/"));
+        }
+        if std::fs::metadata(p).map_or(0, |m| m.len()) > MAX_BYTES {
+            self.notice = Some(format!("{} is larger than 50 MB, so Quire did not add it.", p.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned())));
+            return None;
+        }
+        let dir = root.join(ATTACHMENTS);
+        let name = p.file_name().map_or_else(|| "image.png".to_string(), |n| n.to_string_lossy().into_owned());
+        let name = unique(&dir, &name);
+        if let Err(e) = std::fs::create_dir_all(&dir).and_then(|_| std::fs::copy(p, dir.join(&name))) {
+            self.notice = Some(format!("Could not copy {name}: {e}"));
+            return None;
+        }
+        Some(format!("{ATTACHMENTS}/{name}"))
+    }
+
+    /// The banner of the active note: the `banner` key of its front matter.
+    pub fn active_banner(&self) -> Option<String> {
+        let fm = crate::frontmatter::parse(self.active_text())?;
+        let b = fm.get("banner")?.as_text()?.trim();
+        (!b.is_empty()).then(|| b.to_string())
+    }
+
+    /// Asks for an image file, then makes it the active note's banner.
+    pub fn pick_banner(&mut self, tx: &mut Tx) {
+        if self.active.is_none() {
+            return;
+        }
+        let options = FileDialogOptions { title: "Choose a banner image".into(), directory: Some(crate::store::documents_dir()), ..Default::default() }.filter("Images", &md::IMAGE_EXT);
+        tx.open_file(options, |s: &mut App, result, tx| match result {
+            Ok(Some(path)) => s.set_banner_file(&path, tx),
+            Ok(None) => {}
+            Err(e) => s.notice = Some(format!("Could not show the file picker: {e}")),
+        });
+    }
+
+    /// Makes the image file at `path` the active note's banner, copied into `attachments/`
+    /// when it is not in the notes folder already.
+    pub fn set_banner_file(&mut self, path: &Path, tx: &mut Tx) {
+        let Some(root) = self.vault.as_ref().map(|v| v.path.clone()) else { return };
+        if !md::is_image(&path.to_string_lossy()) {
+            self.notice = Some("A banner needs an image: PNG, JPEG, GIF, WebP, BMP, SVG or AVIF.".into());
+            return;
+        }
+        let Some(rel) = self.import_image(&root, path) else { return };
+        let dir = self.active.as_deref().map_or("", md::dir).to_string();
+        self.set_banner(Some(&md::relative(&dir, &rel)));
+        self.focus_editor(tx);
+    }
+
+    /// Sets the active note's `banner` key to `src`, or removes it with `None`. The caret stays
+    /// on the same text.
+    pub fn set_banner(&mut self, src: Option<&str>) {
+        let Some(a) = self.active.clone() else { return };
+        if self.note_locked(&a) {
+            self.notice = Some("Unlock the note first, then change its banner.".into());
+            return;
+        }
+        let old = self.active_text().to_string();
+        let new = crate::frontmatter::set(&old, "banner", src);
+        if new == old {
+            return;
+        }
+        // Only the top of the note changes, so text after the old block moves by the difference.
+        let edge = crate::frontmatter::parse(&old).map_or(0, |f| f.end);
+        let (anchor, focus) = self.edits.get(&a).map_or((0, 0), |e| (e.anchor, e.focus));
+        let (grew, was) = (new.len(), old.len());
+        let shift = |i: usize| if i >= edge { (i + grew).saturating_sub(was) } else { i };
+        self.set_text(&a, new);
+        if let Some(e) = self.edits.get_mut(&a) {
+            let n = e.text.len();
+            e.set_selection(shift(anchor).min(n), shift(focus).min(n));
+        }
     }
 
     /// Saves pasted PNG bytes into `attachments/` and links them at the caret.
@@ -371,5 +431,59 @@ mod paste_tests {
         assert!(is_web_address("https://example.com/a?b=c"));
         assert!(!is_web_address("https://example.com and more"));
         assert!(!is_web_address("example.com"));
+    }
+
+    #[test]
+    fn a_banner_is_copied_in_and_kept_in_front_matter() {
+        let _env = crate::scroll_tests::ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let keys = ["HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"];
+        let old: Vec<_> = keys.iter().map(|k| (*k, std::env::var_os(k))).collect();
+        let dir = std::env::temp_dir().join(format!("quire-banner-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let vault = dir.join("vault");
+        std::fs::create_dir_all(vault.join("Docs")).unwrap();
+        std::fs::write(vault.join("Docs/Plan.md"), "# Plan\nBody\n").unwrap();
+        std::fs::write(dir.join("sky.png"), b"png").unwrap();
+        // SAFETY: ENV keeps these variables to this test.
+        unsafe {
+            std::env::set_var("HOME", dir.join("home"));
+            std::env::set_var("XDG_CONFIG_HOME", dir.join("cfg"));
+            std::env::set_var("XDG_DATA_HOME", dir.join("data"));
+        }
+        let mut s = crate::app::init();
+        s.load_vault(&vault).unwrap();
+        let mut tx = Tx::default();
+        s.open_link("Plan", &mut tx);
+        let body = "# Plan\nBo".len();
+        s.cur_edit().set_selection(body, body);
+
+        s.set_banner_file(&dir.join("sky.png"), &mut tx);
+        assert!(vault.join("attachments/sky.png").is_file(), "the image was copied into the notes folder");
+        assert_eq!(s.files()["Docs/Plan.md"], "---\nbanner: ../attachments/sky.png\n---\n# Plan\nBody\n");
+        assert_eq!(s.active_banner().as_deref(), Some("../attachments/sky.png"));
+        assert!(matches!(s.image_source(&Img { alt: String::new(), src: "../attachments/sky.png".into(), embed: false }), Source::File(_)));
+        let e = s.cur_edit();
+        assert_eq!(&e.text[..e.focus], "---\nbanner: ../attachments/sky.png\n---\n# Plan\nBo", "the caret stays on the same text");
+
+        let labels = |s: &App| crate::commands::commands(s, false).into_iter().map(|c| c.label).collect::<Vec<_>>();
+        let with = labels(&s);
+        assert!(with.iter().any(|l| l == "Change banner…") && with.iter().any(|l| l == "Remove banner"));
+        let remove = crate::commands::commands(&s, false).into_iter().find(|c| c.label == "Remove banner").unwrap().run;
+        remove(&mut s, &mut tx);
+        assert!(labels(&s).iter().any(|l| l == "Add banner…") && !labels(&s).iter().any(|l| l == "Remove banner"));
+        assert_eq!(s.active_banner(), None);
+        let e = s.cur_edit();
+        assert_eq!(e.focus, body);
+
+        drop(s);
+        unsafe {
+            for (k, v) in old {
+                match v {
+                    Some(v) => std::env::set_var(k, v),
+                    None => std::env::remove_var(k),
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

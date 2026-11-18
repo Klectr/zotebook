@@ -72,6 +72,18 @@ pub fn commands(s: &App, dark: bool) -> Vec<Cmd> {
     if s.active.is_some() {
         v.push(cmd("Insert image…", &["Mod", "Shift", "I"], |s, tx| s.pick_image(tx)));
     }
+    if s.active.as_deref().is_some_and(|a| !s.note_locked(a)) {
+        // A banner goes into `attachments/` and the note's front matter, as the page's own
+        // Add banner button does.
+        let has = s.active_banner().is_some();
+        v.push(cmd(if has { "Change banner…" } else { "Add banner…" }, &[], |s, tx| s.pick_banner(tx)));
+        if has {
+            v.push(cmd("Remove banner", &[], |s, tx| {
+                s.set_banner(None);
+                s.focus_editor(tx);
+            }));
+        }
+    }
     if let Some(a) = s.active.as_deref() {
         if s.note_unlocked(a) {
             v.push(cmd("Lock note now", &[], |s, _| s.relock()));

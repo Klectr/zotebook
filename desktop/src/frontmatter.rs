@@ -26,7 +26,6 @@ pub enum Value {
 
 impl Value {
     /// The value as text, or `None` for a list.
-    #[allow(dead_code)] // For the sticker and banner keys, which come later.
     pub fn as_text(&self) -> Option<&str> {
         match self {
             Value::Text(t) => Some(t),
@@ -49,7 +48,6 @@ pub struct FrontMatter {
 
 impl FrontMatter {
     /// The value of `key`. Keys match in any case.
-    #[allow(dead_code)] // For the sticker and banner keys, which come later.
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.fields.iter().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v)
     }
@@ -75,6 +73,66 @@ pub fn parse(text: &str) -> Option<FrontMatter> {
         inner.push(ln);
     }
     None
+}
+
+/// `text` with the top-level `key` set to `value`, or removed with `None`. A note without front
+/// matter gets a block; a block left with nothing in it goes away. Other lines stay as written.
+pub fn set(text: &str, key: &str, value: Option<&str>) -> String {
+    let line = value.map(|v| format!("{key}: {}\n", quote(v)));
+    let Some(fm) = parse(text) else {
+        return match line {
+            Some(l) => format!("---\n{l}---\n{text}"),
+            None => text.to_string(),
+        };
+    };
+    let bom = if text.starts_with('\u{feff}') { '\u{feff}'.len_utf8() } else { 0 };
+    let block = &text[bom..fm.end];
+    let mut lines: Vec<&str> = block.split_inclusive('\n').collect();
+    let close = lines.pop().unwrap_or("---\n");
+    let mut out: Vec<String> = Vec::new();
+    let mut placed = false;
+    let mut i = 1;
+    while i < lines.len() {
+        let ln = lines[i];
+        i += 1;
+        let c = clean(ln);
+        let mine = !is_nested(c) && !is_comment(c) && split_key(c).is_some_and(|(k, _)| k.eq_ignore_ascii_case(key));
+        if !mine {
+            out.push(ln.to_string());
+            continue;
+        }
+        // The key's own lines go: its line and any indented or `- ` lines under it.
+        while i < lines.len() && (is_nested(clean(lines[i])) || clean(lines[i]).trim().is_empty() && lines[i + 1..].iter().any(|l| is_nested(clean(l)))) {
+            i += 1;
+        }
+        if let Some(l) = line.as_ref().filter(|_| !placed) {
+            out.push(l.clone());
+            placed = true;
+        }
+    }
+    if !placed && let Some(l) = line {
+        if out.last().is_some_and(|l| !l.ends_with('\n')) {
+            out.push("\n".into());
+        }
+        out.push(l);
+    }
+    let rest = &text[fm.end..];
+    if out.iter().all(|l| l.trim().is_empty()) {
+        return format!("{}{rest}", &text[..bom]);
+    }
+    format!("{}{}{}{close}{rest}", &text[..bom], lines[0], out.concat())
+}
+
+/// A value as YAML writes it: plain when it reads back the same, else in double quotes.
+fn quote(v: &str) -> String {
+    let plain = !v.is_empty()
+        && v == v.trim()
+        && !v.contains(": ")
+        && !v.contains(" #")
+        && !v.ends_with(':')
+        && !v.contains('\n')
+        && !v.starts_with(['"', '\'', '[', '{', '#', '-', '&', '*', '!', '|', '>', '%', '@', '`']);
+    if plain { v.to_string() } else { format!("\"{}\"", v.replace('\\', "\\\\").replace('"', "\\\"")) }
 }
 
 /// A line without its line break and trailing spaces.
@@ -178,6 +236,27 @@ fn unquote(v: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn set_adds_changes_and_removes_a_key() {
+        let plain = "# Garden\n";
+        let added = set(plain, "banner", Some("attachments/beds.png"));
+        assert_eq!(added, "---\nbanner: attachments/beds.png\n---\n# Garden\n");
+        assert_eq!(parse(&added).unwrap().get("banner").and_then(Value::as_text), Some("attachments/beds.png"));
+        assert_eq!(set(&added, "banner", None), plain, "an emptied block goes away");
+
+        let note = "---\ntitle: Garden\nbanner: old.png\ntags:\n  - a\n  - b\n---\nBody\n";
+        assert_eq!(set(note, "Banner", Some("new.png")), "---\ntitle: Garden\nBanner: new.png\ntags:\n  - a\n  - b\n---\nBody\n");
+        assert_eq!(set(note, "banner", None), "---\ntitle: Garden\ntags:\n  - a\n  - b\n---\nBody\n");
+        assert_eq!(set(note, "sticker", Some("🌱")), "---\ntitle: Garden\nbanner: old.png\ntags:\n  - a\n  - b\nsticker: 🌱\n---\nBody\n");
+        assert_eq!(set(note, "tags", None), "---\ntitle: Garden\nbanner: old.png\n---\nBody\n");
+        assert_eq!(set(plain, "banner", None), plain);
+
+        let odd = set(plain, "banner", Some("a: b #c.png"));
+        assert_eq!(parse(&odd).unwrap().get("banner").and_then(Value::as_text), Some("a: b #c.png"));
+        let spaced = set(plain, "banner", Some("../attachments/My cat.png"));
+        assert_eq!(parse(&spaced).unwrap().get("banner").and_then(Value::as_text), Some("../attachments/My cat.png"));
+    }
 
     fn text(v: &str) -> Value {
         Value::Text(v.into())
