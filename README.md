@@ -154,4 +154,8 @@ For object storage, each notes folder syncs to its own remote folder, `zotebook/
 | [`design/`](design) | The design prototype that the app follows. |
 | [`assets/`](assets) | The brand marks and the fonts, which keep their SIL Open Font License. |
 
-Zotebook is MIT licensed.
+## License
+
+Zotebook is free software under the [GNU Affero General Public License v3.0 or later](LICENSE). You can use, study, change and share it. If you share a changed version, or run one as a service for other people, you must make its source available under the same license.
+
+Zotebook started as a fork of [Quire](https://github.com/bjarneo/quire) by bjarneo, which is MIT licensed. The code that came from Quire keeps its MIT notice, in [`LICENSE-QUIRE`](LICENSE-QUIRE).

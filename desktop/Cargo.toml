@@ -2,7 +2,7 @@
 name = "zotebook"
 version = "0.6.0"
 edition = "2024"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 description = "A plain editor for folders of Markdown files."
 
 [[bin]]

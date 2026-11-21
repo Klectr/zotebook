@@ -55,7 +55,7 @@ jobs:
           mkdir -p "$D/icons"
           cp target/release/zotebook packaging/zotebook.desktop packaging/linux/install.sh "$D/"
           cp packaging/zotebook.svg packaging/zotebook-16.svg "$D/icons/"
-          cp ../LICENSE "$D/"
+          cp ../LICENSE ../LICENSE-QUIRE "$D/"
           tar czf "../$D.tar.gz" "$D"
           echo "ASSET=$D.tar.gz" >> "$GITHUB_ENV"
 
@@ -68,6 +68,7 @@ jobs:
           cp target/release/zotebook "$A/Contents/MacOS/zotebook"
           iconutil -c icns packaging/macos/zotebook.iconset -o "$A/Contents/Resources/zotebook.icns"
           sed "s/@VERSION@/$V/g" packaging/macos/Info.plist > "$A/Contents/Info.plist"
+          cp ../LICENSE ../LICENSE-QUIRE "$A/Contents/Resources/"
           # An ad-hoc signature, so the app runs on Apple silicon. It is not notarized.
           codesign --force --deep --sign - "$A"
           ditto -c -k --keepParent "$A" "../zotebook-$V-macos-arm64.zip"
@@ -81,6 +82,7 @@ jobs:
           mkdir -p "$D"
           cp target/release/zotebook.exe "$D/"
           cp ../LICENSE "$D/LICENSE.txt"
+          cp ../LICENSE-QUIRE "$D/LICENSE-QUIRE.txt"
           7z a "../$D.zip" "$D" > /dev/null
           echo "ASSET=$D.zip" >> "$GITHUB_ENV"
 
