@@ -1,8 +1,9 @@
 # Zotebook sync format
 
-Zotebook keeps a notes folder the same on every device through an object store that you own. The
-desktop app uses the format in this file. Another app that follows it can
-read and write the same notes.
+This file describes how Zotebook keeps a notes folder the same on every device through an object
+store. The settings offer only Local and Git today; the object-store engine and this format stay
+for hosted sync (Klectr Sync), and another app that follows the format can read and write the
+same notes.
 
 Zotebook was called Quire. The names inside the format kept the old name, so notes from either
 app open in the other: the `.quire/` folder, the `QUIRE1` blob header, the `quire` passphrase
@@ -22,7 +23,7 @@ the current branch onto the remote branch, and pushes. Git authenticates through
 already configured on the computer: the SSH agent, a credential helper, or the remote URL. The
 current branch is used; Zotebook does not switch branches.
 
-Pins stay in `state.json` and do not sync with this provider. The **Encrypt before upload** option
+Pins stay in `state.json` and do not sync with this provider. Object-store encryption
 does not apply: locked notes remain encrypted files, and other notes are committed as plain text,
 so use a private repository if that matters. Zotebook adds `.trash/` to the repository's local
 `.git/info/exclude`, so its trash does not enter the history.
@@ -34,8 +35,8 @@ again.
 ## Remote folder
 
 All objects of one notes folder sit under one key prefix. The default prefix is
-`zotebook/<folder name>/`. You can change it in the **Remote folder** field. The prefix always ends
-in `/`, unless it is empty.
+`zotebook/<folder name>/`. The state file can set another one per notes folder, under
+`settings.sync.folders`. The prefix always ends in `/`, unless it is empty.
 
 Each notes folder on a device has its own prefix. Two notes folders with one prefix merge their
 notes, so an app must not use one prefix value for all its folders. To sync one notes folder

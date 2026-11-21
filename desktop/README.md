@@ -100,15 +100,11 @@ Access is read-only by default. Each tool has its own switch, and hidden folders
 
 ## Sync
 
-Settings, Sync & backup connects a notes folder to a bucket, or to GitHub. **Test connection** reads the remote folder and reports what it holds. After it passes, Zotebook syncs when the folder opens, after you save, every 5 minutes, or only when you select **Sync now**, as you choose. The status bar shows the last sync. Select it to open the sync settings.
+Settings, Sync offers **Local** and **Git**. Local doesn't sync; the panel suggests keeping the folder in iCloud Drive, Dropbox or OneDrive.
 
-- For object storage, each notes folder has its own **Remote folder**. Without a value, it is `zotebook/<folder name>/`.
-- Notes, images up to 50 MB and folders sync. A file that you delete on one device moves to `.trash` on the others.
-- An object-store request that the service does not answer in time is tried again up to 4 times. Transfers run 8 at a time.
+**Git** works only when the notes folder is the root of a Git repository. **Test connection** checks the repository and its remote. After it passes, Zotebook syncs when the folder opens, after you save, every 5 minutes, or only when you select **Sync now**, as you choose. The status bar shows the last sync. Select it to open the sync settings. It stages every change, commits it, rebases the current branch onto its remote and pushes. Git uses the credentials already set up on the computer, such as the SSH agent or a credential helper, so no token is stored in Zotebook. The remote defaults to `origin`; set another name in the form. Git reports a conflict and Zotebook stops with your local commit intact; resolve it with Git, then sync again. Pins stay local, and Zotebook adds `.trash/` to `.git/info/exclude` on that computer. See [`../SYNC.md`](../SYNC.md#github).
 
-**GitHub** works only when the notes folder is the root of a Git repository. It stages every change, commits it, rebases the current branch onto its remote and pushes. Git uses the credentials already set up on the computer, such as the SSH agent or a credential helper, so no token is stored in Zotebook. The remote defaults to `origin`; set another name in the form. Git reports a conflict and Zotebook stops with your local commit intact; resolve it with Git, then sync again. Pins stay local, the encryption option does not apply, and Zotebook adds `.trash/` to `.git/info/exclude` on that computer. See [`../SYNC.md`](../SYNC.md#github).
-
-Zotebook keeps a record of the last object-store sync for each folder and bucket in `sync/` in its config folder. The record lets Zotebook tell an edit from a delete. See [`../SYNC.md`](../SYNC.md) for the format.
+The object-store sync engine in `src/sync/` stays, with its tests, for hosted sync (Klectr Sync). The settings no longer offer it: a saved object-store provider loads as Local. It keeps a record of the last sync for each folder and bucket in `sync/` in the config folder, which lets it tell an edit from a delete. See [`../SYNC.md`](../SYNC.md) for the format.
 
 ## Not in this version
 

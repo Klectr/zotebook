@@ -225,8 +225,18 @@ fn state_path() -> Option<PathBuf> {
 
 pub fn load() -> Persist {
     let Some(p) = state_path() else { return Persist::default() };
-    std::fs::read(&p).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    let mut persist: Persist = std::fs::read(&p).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+    // The settings offer Local and Git only. A store saved before that, which the settings can
+    // no longer show or turn off, falls back to Local so nothing syncs out of sight.
+    if !SYNC_CHOICES.contains(&persist.settings.sync.provider.as_str()) {
+        persist.settings.sync.provider = "none".into();
+        persist.settings.sync.connected = false;
+    }
+    persist
 }
+
+/// The sync choices the settings offer: Local (no sync) and Git.
+pub const SYNC_CHOICES: [&str; 2] = ["none", "github"];
 
 /// Writes the state file atomically, readable only by the user (it can hold sync keys).
 pub fn save(p: &Persist) -> std::io::Result<()> {

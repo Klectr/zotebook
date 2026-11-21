@@ -46,9 +46,16 @@ impl Remote {
     }
 }
 
-/// The region the settings show first for a provider, used until one is picked.
+/// The region a provider's store uses when the settings name none.
 fn default_region(pid: &str) -> &'static str {
-    crate::ui::settings_sync::PROVIDERS.iter().find(|p| p.id == pid).and_then(|p| p.regions.first()).map_or("us-east-1", |r| r.0)
+    match pid {
+        "hetzner" => "fsn1",
+        "b2" => "us-west-004",
+        "do" => "ams3",
+        "scaleway" => "fr-par",
+        "ovh" => "gra",
+        _ => "us-east-1",
+    }
 }
 
 /// The remote folder inside the bucket, always ending in `/` unless empty.

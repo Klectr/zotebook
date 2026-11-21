@@ -36,7 +36,7 @@ Zotebook opens a folder and edits the Markdown files in it. There is no database
 - **Link notes.** Write `[[Note name]]` and `Ctrl`-click to follow it. A link to a missing note creates the note. Renaming a note rewrites the links to it.
 - **Find anything.** `Ctrl+O` opens any note by a fuzzy name. `Ctrl+P` runs any command. `Ctrl+Shift+F` searches every note. Tags (`#idea`) get their own list.
 - **Keep folders tidy.** Make folders in the file tree, drag notes into them, and use the `+` on a folder to make a note there. Click a folder's icon to give it any emoji as its icon: the emoji is the first character of the folder name on disk, so it stays with the folder, and the tree shows the rest of the name beside it. To delete a folder, right-click it. The folder moves to `.trash` with its files. To keep a note at the top of the tree, right-click it and select **Pin**. Pins sync with the notes. In the quick switcher, `Drafts/Idea` makes the note in `Drafts`. A note inside a folder with the folder's own name, such as `Projects/Projects.md`, is the folder's note: it stays out of the tree, and clicking the folder's name or following `[[Projects]]` opens it, making it if it is missing. The chevron opens the folder itself. Preview mode stays on as you move between notes.
-- **Sync your devices.** Keep a notes folder the same on all your computers, through object storage that you control, with optional encryption.
+- **Sync your devices.** Keep a notes folder the same on all your computers with Git, or by keeping it in iCloud Drive, Dropbox or OneDrive.
 - **Focus.** `Ctrl+.` or the focus button hides everything but the text, dims the other paragraphs and keeps the line you type near the middle.
 - **Look at home.** Pick a theme for light mode and one for dark mode from 14 themes, such as White, Black, Nord, Gruvbox, Catppuccin, Tokyo Night, Rosé Pine and Solarized. Pick an accent colour, or type any hex value. "Match system" switches between your two themes. On Omarchy, your Omarchy theme is one of the choices. Choose one of four monospaced editor fonts, including Maple Mono.
 - **Stay up to date.** When a new release is out, an **Update** button shows at the top right. Select it, and Zotebook installs the new version and restarts. This works on Linux, macOS and Windows.
@@ -96,7 +96,7 @@ The desktop app is built with [Rune](https://github.com/anomalyco/rune), a GPU-r
 
 ### Coming from Quire
 
-Zotebook was called Quire. The first time Zotebook starts, it moves Quire's settings into its own folder: your notes folders, open tabs, themes and sync keys carry over. Notes folders that synced to the old default remote folder, `quire/<folder name>/`, keep it. Notes locked in Quire open in Zotebook.
+Zotebook was called Quire. The first time Zotebook starts, it moves Quire's settings into its own folder: your notes folders, open tabs, themes and Git sync carry over. Notes locked in Quire open in Zotebook. Zotebook doesn't offer sync through your own storage bucket, so a folder that synced that way starts out Local; switch it to Git, or keep it in iCloud Drive or Dropbox.
 
 - On macOS, delete `Quire.app` after you install `Zotebook.app`.
 - Quire's **Update** button can't install Zotebook. Download it once from the [latest release](https://github.com/Klectr/zotebook/releases/latest).
@@ -118,31 +118,26 @@ Access is read-only by default. Each tool has its own switch, and hidden folders
 
 ## Sync your devices
 
-Zotebook keeps a copy of your notes in object storage that you control. Every computer uses the same format, so a note you write on one opens on the others.
+Your notes always live on your computer first, as plain files. Settings, Sync offers two ways to get them onto your other computers:
 
-1. Make a bucket at your provider and an access key for it.
-2. Open Settings, Sync & backup, and select the provider.
-3. Fill in the bucket and the key.
-4. Select **Test connection**. Sync starts when the test passes.
+- **Local** keeps the notes folder on this computer only. To use it elsewhere, keep the folder in iCloud Drive, Dropbox or OneDrive, and it syncs like any other folder there.
+- **Git** syncs a notes folder that is the root of a Git repository. Zotebook commits the folder, rebases the current branch onto its remote and pushes it, using the Git credentials already on the computer. When both sides changed the same lines, Git reports a conflict and Zotebook stops so you can resolve it. Locked notes stay encrypted; other notes are committed as plain text, so use a private repository.
 
-Zotebook works with Amazon S3, Hetzner, Azure Blob Storage, Google Cloud Storage, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, Wasabi, Scaleway, OVHcloud and any other S3-compatible server, such as MinIO.
+For Git:
 
-A notes folder that is the root of a Git repository can also sync with GitHub. Zotebook commits the folder, rebases the current branch onto its remote and pushes it, using the Git credentials already configured on the computer. Git reports a conflict and Zotebook stops so you can resolve it. Pins stay local, and the encryption option does not apply.
+1. Make the notes folder a Git repository with a remote, such as a private GitHub repository.
+2. Open Settings, Sync, and select **Git**.
+3. Select **Test connection**. Sync starts when the test passes.
 
-- **Encrypt before upload** encrypts each note with AES-256-GCM before upload. The key comes from your passphrase, so the provider stores neither note names nor note text. If you lose the passphrase, nobody can open the remote copy. This option is for object storage; GitHub uses Git.
 - **When to sync** is **On save**, **Every 5 min** or **Manually**. **Sync now** is also in the command palette.
-- With object storage, when two devices change the same note, Zotebook keeps both versions. The other device's text goes to `<name> (conflict <device>).md` next to the note. With GitHub, Git reports the conflict and Zotebook stops so you can resolve it.
-- Images in the notes folder sync too, up to 50 MB each.
-- Folders sync too, empty ones included. A note or a folder that you delete on one device moves to `.trash` on the other devices.
+- Images and folders sync too. Pins stay on each computer.
 
-For object storage, each notes folder syncs to its own remote folder, `zotebook/<folder name>/` unless you set another one in **Remote folder**. To sync one notes folder between two devices, give it the same remote folder on both.
-
-[`SYNC.md`](SYNC.md) describes the remote format, so other tools can read and write it.
+Hosted sync that just works, end-to-end encrypted, is planned as Klectr Sync. It will use the format in [`SYNC.md`](SYNC.md).
 
 ## Not in this version
 
 - With "Ask before changes" on, MCP tools that write return an error, because there is no approval prompt yet.
-- GitHub sync needs Git installed and a notes folder that is the root of a Git repository with a remote.
+- Git sync needs Git installed and a notes folder that is the root of a Git repository with a remote.
 - The macOS and Windows builds come from CI and are not tested on those systems yet.
 
 ## In this repository

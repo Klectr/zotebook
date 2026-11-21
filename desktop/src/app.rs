@@ -55,7 +55,7 @@ pub const SECS: [(Sec, &str); 6] = [
     (Sec::Appearance, "Appearance"),
     (Sec::Editor, "Editor"),
     (Sec::Files, "Files & links"),
-    (Sec::Sync, "Sync & backup"),
+    (Sec::Sync, "Sync"),
     (Sec::Mcp, "MCP"),
     (Sec::Keys, "Shortcuts"),
 ];

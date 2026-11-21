@@ -87,14 +87,6 @@ impl App {
         }
     }
 
-    /// The remote folder of the open notes folder, as the settings show it.
-    pub fn remote_folder(&self) -> String {
-        match &self.vault {
-            Some(v) => super::folder_prefix(&self.settings().sync, &v.path, &v.name),
-            None => format!("{}/notes/", super::DEFAULT_ROOT),
-        }
-    }
-
     /// Sync is set up and its test passed.
     pub fn sync_ready(&self) -> bool {
         let sy = &self.settings().sync;
