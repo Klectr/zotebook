@@ -1,6 +1,6 @@
 [package]
 name = "zotebook"
-version = "0.5.6"
+version = "0.6.0"
 edition = "2024"
 license = "MIT"
 description = "A plain editor for folders of Markdown files."
