@@ -83,11 +83,12 @@ fn main() {
     }
     rune::prewarm_gpu();
     rune::set_app_id("zotebook");
-    // The Dock icon on macOS, and the title bar and taskbar icon on Windows. Linux takes the
-    // icon from the launcher entry.
-    if !cfg!(target_os = "linux") {
-        let _ = rune::set_app_icon(&include_bytes!("../packaging/zotebook-512.png")[..]);
-    }
+    // The Dock icon on macOS, drawn on Apple's icon grid, and the title bar and taskbar icon
+    // on Windows, which fills its square. Linux takes the icon from the launcher entry.
+    #[cfg(target_os = "macos")]
+    let _ = rune::set_app_icon(&include_bytes!("../packaging/zotebook-mac-512.png")[..]);
+    #[cfg(target_os = "windows")]
+    let _ = rune::set_app_icon(&include_bytes!("../packaging/zotebook-512.png")[..]);
     let spec = AppSpec {
         min_size: Some((520.0, 400.0)),
         fonts: theme::FONTS,
